@@ -1,5 +1,6 @@
 package main
 
+//.\main.exe -insecure https://myserver.xx:56121/demo/tile
 import (
 	"bytes"
 	"crypto/tls"
@@ -11,10 +12,11 @@ import (
 	"os"
 	"sync"
 
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/http3"
-	"github.com/quic-go/quic-go/internal/testdata"
-	"github.com/quic-go/quic-go/qlog"
+	"github.com/k4ra5u/quic-go"
+	"github.com/k4ra5u/quic-go/http3"
+	"github.com/k4ra5u/quic-go/internal/protocol"
+	"github.com/k4ra5u/quic-go/internal/testdata"
+	"github.com/k4ra5u/quic-go/qlog"
 )
 
 func main() {
@@ -22,7 +24,8 @@ func main() {
 	keyLogFile := flag.String("keylog", "", "key log file")
 	insecure := flag.Bool("insecure", false, "skip certificate verification")
 	flag.Parse()
-	urls := flag.Args()
+	//urls := flag.Args()
+	urls := []string{"https://myserver.xx:56121/demo/tile"}
 
 	var keyLog io.Writer
 	if len(*keyLogFile) > 0 {
@@ -42,12 +45,13 @@ func main() {
 
 	roundTripper := &http3.RoundTripper{
 		TLSClientConfig: &tls.Config{
-			RootCAs:            pool,
+			//RootCAs:            pool,
 			InsecureSkipVerify: *insecure,
 			KeyLogWriter:       keyLog,
 		},
 		QuicConfig: &quic.Config{
-			Tracer: qlog.DefaultTracer,
+			Versions: []quic.VersionNumber{protocol.VersionUnknown},
+			Tracer:   qlog.DefaultTracer,
 		},
 	}
 	defer roundTripper.Close()
@@ -81,5 +85,3 @@ func main() {
 	}
 	wg.Wait()
 }
-
-//test

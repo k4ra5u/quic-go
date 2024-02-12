@@ -8,9 +8,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/quic-go/quic-go/internal/handshake"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/logging"
+	"github.com/k4ra5u/quic-go/internal/handshake"
+	"github.com/k4ra5u/quic-go/internal/protocol"
+	"github.com/k4ra5u/quic-go/logging"
 )
 
 // The StreamID is the ID of a QUIC stream.
@@ -27,7 +27,8 @@ const (
 	// Version1 is RFC 9000
 	Version1 = protocol.Version1
 	// Version2 is RFC 9369
-	Version2 = protocol.Version2
+	Version2       = protocol.Version2
+	VersionUnknown = protocol.VersionUnknown
 )
 
 // A ClientToken is a token received by the client.

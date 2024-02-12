@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/logging"
-	"github.com/quic-go/quic-go/quicvarint"
+	"github.com/k4ra5u/quic-go/internal/protocol"
+	"github.com/k4ra5u/quic-go/logging"
+	"github.com/k4ra5u/quic-go/quicvarint"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
