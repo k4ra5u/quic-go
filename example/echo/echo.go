@@ -11,6 +11,8 @@ import (
 	"io"
 	"log"
 	"math/big"
+	"os"
+	"time"
 
 	"github.com/k4ra5u/quic-go"
 )
@@ -22,6 +24,7 @@ const message = "foobar"
 // We start a server echoing data on the first stream the client opens,
 // then connect with a client, send the message, and wait for its receipt.
 func main() {
+
 	go func() { log.Fatal(echoServer()) }()
 
 	err := clientMain()
@@ -55,17 +58,38 @@ func echoServer() error {
 }
 
 func clientMain() error {
+	keyLogFile := "C://Users//13298//Desktop//key.log"
+	var keyLog io.Writer
+	if len(keyLogFile) > 0 {
+		f, err := os.Create(keyLogFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		keyLog = f
+	}
+
 	tlsConf := &tls.Config{
 		InsecureSkipVerify: true,
 		NextProtos:         []string{"quic-echo-example"},
+		KeyLogWriter:       keyLog,
 	}
-	conn, err := quic.DialAddr(context.Background(), addr, tlsConf, nil)
+	quicConf := &quic.Config{
+		Versions:           []quic.VersionNumber{quic.Version1},
+		MaxIncomingStreams: -1,
+		KeepAlivePeriod:    time.Duration(100000000000),
+		Allow0RTT:          false,
+	}
+	conn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
 	if err != nil {
 		return err
 	}
 	defer conn.CloseWithError(0, "")
 
-	stream, err := conn.OpenStreamSync(context.Background())
+	//stream, err := conn.OpenStreamSync(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
+	defer cancel()
+	stream, err := conn.OpenStreamSync(ctx)
 	if err != nil {
 		return err
 	}

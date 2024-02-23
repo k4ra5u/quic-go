@@ -1,7 +1,6 @@
 package quic
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/k4ra5u/quic-go/internal/protocol"
@@ -40,11 +39,11 @@ func validateConfig(config *Config) error {
 		config.MaxConnectionReceiveWindow = quicvarint.Max
 	}
 	// check that all QUIC versions are actually supported
-	for _, v := range config.Versions {
-		if !protocol.IsValidVersion(v) {
-			return fmt.Errorf("invalid QUIC version: %s", v)
-		}
-	}
+	//for _, v := range config.Versions {
+	//	if !protocol.IsValidVersion(v) {
+	//		return fmt.Errorf("invalid QUIC version: %s", v)
+	//	}
+	//}
 	return nil
 }
 

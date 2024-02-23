@@ -838,7 +838,7 @@ var _ = Describe("Handshake tests", func() {
 		)
 		Expect(err).To(MatchError(&qerr.TransportError{
 			ErrorCode:    qerr.InternalError,
-			ErrorMessage: "tls: invalid NextProtos value",
+			ErrorMessage: "tls: invalid NextProtos valueblablabla",
 		}))
 		Consistently(packetChan).ShouldNot(Receive())
 		ln.Close()

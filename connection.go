@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -1319,12 +1318,14 @@ func (s *connection) handleFrame(f wire.Frame, encLevel protocol.EncryptionLevel
 	case *wire.StreamsBlockedFrame:
 	case *wire.StopSendingFrame:
 		err = s.handleStopSendingFrame(frame)
-	case *wire.PingFrame:
+	/* PATCH */
+	//case *wire.PingFrame:
 	case *wire.PathChallengeFrame:
 		s.handlePathChallengeFrame(frame)
-	case *wire.PathResponseFrame:
-		// since we don't send PATH_CHALLENGEs, we don't expect PATH_RESPONSEs
-		err = errors.New("unexpected PATH_RESPONSE frame")
+	/* PATCH */
+	//case *wire.PathResponseFrame:
+	// since we don't send PATH_CHALLENGEs, we don't expect PATH_RESPONSEs
+	//	err = errors.New("unexpected PATH_RESPONSE frame")
 	case *wire.NewTokenFrame:
 		err = s.handleNewTokenFrame(frame)
 	case *wire.NewConnectionIDFrame:
@@ -1336,7 +1337,9 @@ func (s *connection) handleFrame(f wire.Frame, encLevel protocol.EncryptionLevel
 	case *wire.DatagramFrame:
 		err = s.handleDatagramFrame(frame)
 	default:
-		err = fmt.Errorf("unexpected frame type: %s", reflect.ValueOf(&frame).Elem().Type().Name())
+		/* PATCH */
+		//err = fmt.Errorf("unexpected frame type: %s", reflect.ValueOf(&frame).Elem().Type().Name())
+		err = nil
 	}
 	return err
 }

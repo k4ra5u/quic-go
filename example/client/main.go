@@ -10,26 +10,25 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync"
 
 	"github.com/k4ra5u/quic-go"
 	"github.com/k4ra5u/quic-go/http3"
-	"github.com/k4ra5u/quic-go/internal/protocol"
 	"github.com/k4ra5u/quic-go/internal/testdata"
 	"github.com/k4ra5u/quic-go/qlog"
 )
 
 func main() {
 	quiet := flag.Bool("q", false, "don't print the data")
-	keyLogFile := flag.String("keylog", "", "key log file")
-	insecure := flag.Bool("insecure", false, "skip certificate verification")
+	//keyLogFile := flag.String("keylog", "", "key log file")
+	keyLogFile := "C://Users//13298//Desktop//key.log"
+	insecure := true
 	flag.Parse()
 	//urls := flag.Args()
 	urls := []string{"https://myserver.xx:56121/demo/tile"}
 
 	var keyLog io.Writer
-	if len(*keyLogFile) > 0 {
-		f, err := os.Create(*keyLogFile)
+	if len(keyLogFile) > 0 {
+		f, err := os.Create(keyLogFile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -46,11 +45,12 @@ func main() {
 	roundTripper := &http3.RoundTripper{
 		TLSClientConfig: &tls.Config{
 			//RootCAs:            pool,
-			InsecureSkipVerify: *insecure,
+			InsecureSkipVerify: insecure,
 			KeyLogWriter:       keyLog,
+			//NextProtos:         []string{"quic-echo-example"},
 		},
 		QuicConfig: &quic.Config{
-			Versions: []quic.VersionNumber{protocol.VersionUnknown},
+			Versions: []quic.VersionNumber{quic.Version1},
 			Tracer:   qlog.DefaultTracer,
 		},
 	}
@@ -59,29 +59,26 @@ func main() {
 		Transport: roundTripper,
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(urls))
+	//var wg sync.WaitGroup
+	//wg.Add(len(urls))
 	for _, addr := range urls {
 		log.Printf("GET %s", addr)
-		go func(addr string) {
-			rsp, err := hclient.Get(addr)
-			if err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("Got response for %s: %#v", addr, rsp)
+		rsp, err := hclient.Get(addr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Got response for %s: %#v", addr, rsp)
 
-			body := &bytes.Buffer{}
-			_, err = io.Copy(body, rsp.Body)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if *quiet {
-				log.Printf("Response Body: %d bytes", body.Len())
-			} else {
-				log.Printf("Response Body (%d bytes):\n%s", body.Len(), body.Bytes())
-			}
-			wg.Done()
-		}(addr)
+		body := &bytes.Buffer{}
+		_, err = io.Copy(body, rsp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if *quiet {
+			log.Printf("Response Body: %d bytes", body.Len())
+		} else {
+			log.Printf("Response Body (%d bytes):\n%s", body.Len(), body.Bytes())
+		}
+
 	}
-	wg.Wait()
 }

@@ -77,7 +77,7 @@ var _ = Describe("Crypto Setup TLS", func() {
 
 		Expect(cl.StartHandshake()).To(MatchError(&qerr.TransportError{
 			ErrorCode:    qerr.InternalError,
-			ErrorMessage: "tls: invalid NextProtos value",
+			ErrorMessage: "tls: invalid NextProtos valuexxxxx",
 		}))
 	})
 
