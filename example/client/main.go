@@ -20,11 +20,12 @@ import (
 func main() {
 	quiet := flag.Bool("q", false, "don't print the data")
 	//keyLogFile := flag.String("keylog", "", "key log file")
-	keyLogFile := "C://Users//13298//Desktop//key.log"
+	keyLogFile := "/home/john/Desktop/key.log"
 	insecure := true
 	flag.Parse()
 	//urls := flag.Args()
-	urls := []string{"https://myserver.xx:56121/demo/tile"}
+	urls := []string{"https://127.0.0.1:58443/index.html"}
+	//urls := []string{"https://127.0.0.1:58443/index.html"}
 
 	var keyLog io.Writer
 	if len(keyLogFile) > 0 {

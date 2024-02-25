@@ -143,7 +143,7 @@ func main() {
 	flag.Parse()
 
 	if len(bs) == 0 {
-		bs = binds{"localhost:6121"}
+		bs = binds{"0.0.0.0:56121"}
 	}
 
 	handler := setupHandler(*www)
