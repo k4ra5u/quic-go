@@ -14,5 +14,6 @@ fuzzing/*/sonarprofile
 fuzzing/*/suppressions
 fuzzing/*/corpus/
 
+*.exe
 gomock_reflect_*/
 *.exe
