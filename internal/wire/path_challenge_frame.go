@@ -8,8 +8,10 @@ import (
 )
 
 // A PathChallengeFrame is a PATH_CHALLENGE frame
+/* PATCH */
 type PathChallengeFrame struct {
-	Data [8]byte
+	Data    [8]byte
+	Padding []byte
 }
 
 func parsePathChallengeFrame(r *bytes.Reader, _ protocol.Version) (*PathChallengeFrame, error) {
@@ -23,13 +25,16 @@ func parsePathChallengeFrame(r *bytes.Reader, _ protocol.Version) (*PathChalleng
 	return frame, nil
 }
 
+/* PATCH */
 func (f *PathChallengeFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
 	b = append(b, pathChallengeFrameType)
 	b = append(b, f.Data[:]...)
+	b = append(b, f.Padding...)
 	return b, nil
 }
 
 // Length of a written frame
+/* PATCH */
 func (f *PathChallengeFrame) Length(_ protocol.Version) protocol.ByteCount {
-	return 1 + 8
+	return protocol.ByteCount(1 + 8 + len(f.Padding))
 }

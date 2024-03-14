@@ -463,8 +463,8 @@ func (p *packetPacker) appendPacket(buf *packetBuffer, onlyAck bool, maxPacketSi
 	connID := p.getDestConnID()
 	hdrLen := wire.ShortHeaderLen(connID, pnLen)
 	/* PATCH */
-	//pl := p.maybeGetShortHeaderPacket(sealer, hdrLen, maxPacketSize, onlyAck, true, v)
-	pl := p.maybeGetShortHeaderPacket(sealer, hdrLen, maxPacketSize, onlyAck, false, v)
+	pl := p.maybeGetShortHeaderPacket(sealer, hdrLen, maxPacketSize, onlyAck, true, v)
+	//pl := p.maybeGetShortHeaderPacket(sealer, hdrLen, maxPacketSize, onlyAck, false, v)
 	if pl.length == 0 {
 		return shortHeaderPacket{}, errNothingToPack
 	}

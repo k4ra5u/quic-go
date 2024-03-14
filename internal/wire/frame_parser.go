@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"github.com/k4ra5u/quic-go/internal/protocol"
 	"github.com/k4ra5u/quic-go/internal/qerr"
@@ -59,7 +60,7 @@ func NewFrameParser(supportsDatagrams bool) *FrameParser {
 
 // ParseNext parses the next frame.
 // It skips PADDING frames.
-func (p *FrameParser) ParseNext(data []byte, encLevel protocol.EncryptionLevel, v protocol.Version) (int, Frame, error) {
+func (p *FrameParser) ParseNext(data []byte, encLevel protocol.EncryptionLevel, v protocol.Version) (int, Frame, *qerr.TransportError) {
 	startLen := len(data)
 	p.r.Reset(data)
 	frame, err := p.parseNext(&p.r, encLevel, v)
@@ -68,7 +69,10 @@ func (p *FrameParser) ParseNext(data []byte, encLevel protocol.EncryptionLevel, 
 	return n, frame, err
 }
 
-func (p *FrameParser) parseNext(r *bytes.Reader, encLevel protocol.EncryptionLevel, v protocol.Version) (Frame, error) {
+func (p *FrameParser) parseNext(r *bytes.Reader, encLevel protocol.EncryptionLevel, v protocol.Version) (Frame, *qerr.TransportError) {
+	/* PATCH */
+	padding_Read_flag := 0
+	errorMessage := ""
 	for r.Len() != 0 {
 		typ, err := quicvarint.Read(r)
 		if err != nil {
@@ -78,6 +82,11 @@ func (p *FrameParser) parseNext(r *bytes.Reader, encLevel protocol.EncryptionLev
 			}
 		}
 		if typ == 0x0 { // skip PADDING frames
+			if padding_Read_flag == 0 {
+				padding_Read_flag = 1
+				errorMessage = strconv.Itoa(p.r.Len() + 1)
+				//log.Printf("Received PADDING frame:%d", p.r.Len()+1)
+			}
 			continue
 		}
 
@@ -89,7 +98,19 @@ func (p *FrameParser) parseNext(r *bytes.Reader, encLevel protocol.EncryptionLev
 				ErrorMessage: err.Error(),
 			}
 		}
+		if padding_Read_flag == 1 {
+			return f, &qerr.TransportError{
+				ErrorCode:    0xdeadbeef,
+				ErrorMessage: errorMessage,
+			}
+		}
 		return f, nil
+	}
+	if padding_Read_flag == 1 {
+		return nil, &qerr.TransportError{
+			ErrorCode:    0xdeadbeef,
+			ErrorMessage: errorMessage,
+		}
 	}
 	return nil, nil
 }

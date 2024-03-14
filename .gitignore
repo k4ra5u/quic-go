@@ -14,5 +14,8 @@ fuzzing/*/sonarprofile
 fuzzing/*/suppressions
 fuzzing/*/corpus/
 
+example/PC_DOS/*.log
+example/PC_DOS/*.txt
+
 *.exe
 gomock_reflect_*/
