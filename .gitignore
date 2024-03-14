@@ -16,6 +16,6 @@ fuzzing/*/corpus/
 
 example/PC_DOS/*.log
 example/PC_DOS/*.txt
-
+example/PC_DOS/*.diff
 *.exe
 gomock_reflect_*/
