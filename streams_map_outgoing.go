@@ -77,9 +77,16 @@ func (m *outgoingStreamsMap[T]) OpenStreamSync(ctx context.Context) (T, error) {
 		return *new(T), err
 	}
 
+	/* PATCH */
+
 	if len(m.openQueue) == 0 && m.nextStream <= m.maxStream {
 		return m.openStream(), nil
 	}
+	//if len(m.openQueue) < int(m.maxStream) {
+	//	return m.openStream(), nil
+	//}
+	//m.nextStream = (m.nextStream-1)%128 + 2
+	//return m.openStream(), nil
 
 	waitChan := make(chan struct{}, 1)
 	queuePos := m.highestInQueue

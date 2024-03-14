@@ -24,7 +24,7 @@ func main() {
 	insecure := true
 	flag.Parse()
 	//urls := flag.Args()
-	urls := []string{"https://127.0.0.1:58443/index.html"}
+	urls := []string{"https://127.0.0.1:58443/"}
 	//urls := []string{"https://127.0.0.1:58443/index.html"}
 
 	var keyLog io.Writer

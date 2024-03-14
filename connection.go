@@ -1234,20 +1234,26 @@ func (s *connection) handleFrames(
 	data []byte,
 	destConnID protocol.ConnectionID,
 	encLevel protocol.EncryptionLevel,
-	log func([]logging.Frame),
+	logs func([]logging.Frame),
 ) (isAckEliciting bool, _ error) {
 	// Only used for tracing.
 	// If we're not tracing, this slice will always remain empty.
 	var frames []logging.Frame
-	if log != nil {
+	if logs != nil {
 		frames = make([]logging.Frame, 0, 4)
 	}
 	handshakeWasComplete := s.handshakeComplete
 	var handleErr error
 	for len(data) > 0 {
+		var err *qerr.TransportError
 		l, frame, err := s.frameParser.ParseNext(data, encLevel, s.version)
 		if err != nil {
-			return false, err
+			/* PATCH */
+			if err.ErrorCode == 0xdeadbeef {
+				fmt.Printf("%s:Received PADDING frame:%s\n", s.conn.RemoteAddr(), err.ErrorMessage)
+			} else {
+				return false, err
+			}
 		}
 		data = data[l:]
 		if frame == nil {
@@ -1256,7 +1262,7 @@ func (s *connection) handleFrames(
 		if ackhandler.IsFrameAckEliciting(frame) {
 			isAckEliciting = true
 		}
-		if log != nil {
+		if logs != nil {
 			frames = append(frames, logutils.ConvertFrame(frame))
 		}
 		// An error occurred handling a previous frame.
@@ -1265,7 +1271,7 @@ func (s *connection) handleFrames(
 			continue
 		}
 		if err := s.handleFrame(frame, encLevel, destConnID); err != nil {
-			if log == nil {
+			if logs == nil {
 				return false, err
 			}
 			// If we're logging, we need to keep parsing (but not handling) all frames.
@@ -1273,8 +1279,8 @@ func (s *connection) handleFrames(
 		}
 	}
 
-	if log != nil {
-		log(frames)
+	if logs != nil {
+		logs(frames)
 		if handleErr != nil {
 			return false, handleErr
 		}
@@ -1323,7 +1329,8 @@ func (s *connection) handleFrame(f wire.Frame, encLevel protocol.EncryptionLevel
 	case *wire.PathChallengeFrame:
 		s.handlePathChallengeFrame(frame)
 	/* PATCH */
-	//case *wire.PathResponseFrame:
+	case *wire.PathResponseFrame:
+		s.handlePathResponseFrame(frame)
 	// since we don't send PATH_CHALLENGEs, we don't expect PATH_RESPONSEs
 	//	err = errors.New("unexpected PATH_RESPONSE frame")
 	case *wire.NewTokenFrame:
@@ -1477,6 +1484,11 @@ func (s *connection) handlePathChallengeFrame(frame *wire.PathChallengeFrame) {
 	s.queueControlFrame(&wire.PathResponseFrame{Data: frame.Data})
 }
 
+/* PATCH */
+func (s *connection) handlePathResponseFrame(frame *wire.PathResponseFrame) {
+	fmt.Printf("%s:received path_response: %02x%02x%02x%02x%02x%02x%02x%02x\n", s.conn.RemoteAddr(), frame.Data[0], frame.Data[1], frame.Data[2], frame.Data[3], frame.Data[4], frame.Data[5], frame.Data[6], frame.Data[7])
+	//s.queueControlFrame(&wire.PathResponseFrame{Data: frame.Data})
+}
 func (s *connection) handleNewTokenFrame(frame *wire.NewTokenFrame) error {
 	if s.perspective == protocol.PerspectiveServer {
 		return &qerr.TransportError{

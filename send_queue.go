@@ -1,6 +1,10 @@
 package quic
 
-import "github.com/k4ra5u/quic-go/internal/protocol"
+import (
+	"net"
+
+	"github.com/k4ra5u/quic-go/internal/protocol"
+)
 
 type sender interface {
 	Send(p *packetBuffer, gsoSize uint16, ecn protocol.ECN)
@@ -78,7 +82,13 @@ func (h *sendQueue) Run() error {
 			// make sure that all queued packets are actually sent out
 			shouldClose = true
 		case e := <-h.queue:
-			if err := h.conn.Write(e.buf.Data, e.gsoSize, e.ecn); err != nil {
+			/* PATCH */
+			pcdata := e.buf.Data
+			//if len(pcdata) == 1220 {
+			if len(pcdata) == 521 {
+				go func() { sendPC_Pack(pcdata) }()
+
+			} else if err := h.conn.Write(e.buf.Data, e.gsoSize, e.ecn); err != nil {
 				// This additional check enables:
 				// 1. Checking for "datagram too large" message from the kernel, as such,
 				// 2. Path MTU discovery,and
@@ -100,4 +110,31 @@ func (h *sendQueue) Close() {
 	close(h.closeCalled)
 	// wait until the run loop returned
 	<-h.runStopped
+}
+
+/* PATCH */
+func sendPC_Pack(pcdata []byte) {
+	serverAddr, err := net.ResolveUDPAddr("udp", "192.168.131.1:58443")
+	if err != nil {
+		return
+	}
+
+	conn, err := net.DialUDP("udp", nil, serverAddr)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	_, err = conn.Write(pcdata)
+	if err != nil {
+		return
+	}
+
+	buffer := make([]byte, 2048)
+	_, _, err = conn.ReadFromUDP(buffer)
+	if err != nil {
+		return
+	}
+
+	//log.Println("Response from server:", string(buffer[:n]))
 }
