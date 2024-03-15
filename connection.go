@@ -2113,7 +2113,15 @@ func (s *connection) sendPackedCoalescedPacket(packet *coalescedPacket, ecn prot
 		s.sentPacketHandler.SentPacket(now, p.PacketNumber, largestAcked, p.StreamFrames, p.Frames, protocol.Encryption1RTT, ecn, p.Length, p.IsPathMTUProbePacket)
 	}
 	s.connIDManager.SentPacket()
+	if packet.shortHdrPacket != nil {
+		if packet.shortHdrPacket.Frames != nil {
+			//log.Printf("sending packet_buffer:%v", packet.buffer)
+			//log.Printf("sending shortHdrPacket:%v", packet.shortHdrPacket.Frames[0].Frame)
+		}
+
+	}
 	s.sendQueue.Send(packet.buffer, 0, ecn)
+
 	return nil
 }
 

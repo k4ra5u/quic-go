@@ -11,8 +11,9 @@
             "mode": "auto",
             "program": "${fileDirname}",
             //"args": "-f /home/john/Desktop/cjj_related/shodan/shodan-python/unique_data2args.json 1>1.log"
-            "args": "-i 192.168.132.1 -p 58443 -a h3"
-            //"args": "-i 34.110.130.227 -p 443 -a h3"
+            //"args": "-i myserver.xx -p 58443 -a h3"
+            "args": "-i 183.173.168.115 -p 58443 -a h3"
+            //"args": "-i 85.31.237.58 -p 443 -a h3"
         }
     ]
 }

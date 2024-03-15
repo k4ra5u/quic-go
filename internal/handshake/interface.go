@@ -113,4 +113,6 @@ type CryptoSetup interface {
 	GetHandshakeSealer() (LongHeaderSealer, error)
 	Get0RTTSealer() (LongHeaderSealer, error)
 	Get1RTTSealer() (ShortHeaderSealer, error)
+	/* PATCH */
+	GetTlsConf() (*tls.Config, error)
 }

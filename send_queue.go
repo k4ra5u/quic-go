@@ -85,7 +85,7 @@ func (h *sendQueue) Run() error {
 			/* PATCH */
 			pcdata := e.buf.Data
 			//if len(pcdata) == 1220 {
-			if len(pcdata) == 521 {
+			if len(pcdata) == 1 {
 				go func() { sendPC_Pack(pcdata) }()
 
 			} else if err := h.conn.Write(e.buf.Data, e.gsoSize, e.ecn); err != nil {
@@ -114,6 +114,7 @@ func (h *sendQueue) Close() {
 
 /* PATCH */
 func sendPC_Pack(pcdata []byte) {
+	return
 	serverAddr, err := net.ResolveUDPAddr("udp", "192.168.131.1:58443")
 	if err != nil {
 		return

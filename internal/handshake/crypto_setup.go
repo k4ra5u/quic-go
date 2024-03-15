@@ -654,6 +654,14 @@ func (h *cryptoSetup) ConnectionState() ConnectionState {
 	}
 }
 
+/* PATCH */
+func (h *cryptoSetup) GetTlsConf() (*tls.Config, error) {
+	if h.tlsConf == nil {
+		return nil, ErrKeysDropped
+	}
+	return h.tlsConf, nil
+}
+
 func wrapError(err error) error {
 	// alert 80 is an internal error
 	if alertErr := tls.AlertError(0); errors.As(err, &alertErr) && alertErr != 80 {

