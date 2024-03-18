@@ -1,7 +1,6 @@
 package quic
 
 import (
-	"bytes"
 	crand "crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
@@ -878,6 +877,7 @@ func (p *packetPacker) appendShortHeaderPacket(
 
 			// 创建 UDP 连接
 			serverIP := "127.0.0.1"
+			//serverIP := "202.112.47.62"
 			serverPort := "14443"
 			conn, err := net.Dial("udp", serverIP+":"+serverPort)
 			if err != nil {
@@ -892,7 +892,7 @@ func (p *packetPacker) appendShortHeaderPacket(
 				return shortHeaderPacket{}, err
 			}
 			//log.Println("发送消息:", jsonData)
-			raw = bytes.Repeat([]byte("A"), 1)
+			//raw = bytes.Repeat([]byte("A"), 1)
 
 			//return shortHeaderPacket{}, errors.New("prevent PC frame")
 

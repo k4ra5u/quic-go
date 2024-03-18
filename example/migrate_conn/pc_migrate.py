@@ -38,7 +38,7 @@ while True:
         dst = ConnAddr.rsplit(":", 1)
         dst_ip ,dst_port =dst[0],dst[1]
         dst_port = int(dst_port)
-        udp_packet = IP(src=src_ip, dst=dst_ip) / UDP(sport=src_port, dport=dst_port) / Raw(load=PcMessage)
+        udp_packet = IP(src=src_ip, dst=dst_ip,flags='DF') / UDP(sport=src_port, dport=dst_port) / Raw(load=PcMessage)
         # 发送数据包
         send(udp_packet)
         #print(udp_packet)
