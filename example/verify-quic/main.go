@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -21,8 +22,8 @@ var keyLog io.Writer
 func main() {
 	//go func() { log.Fatal(echoServer()) }()
 
-	//keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
-	keyLogFile := "/home/john/Desktop/cjj_related/key.log"
+	keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
+	//keyLogFile := "/home/john/Desktop/cjj_related/key.log"
 	//keyLogFile := "/mnt/hgfs/work/key.log"
 
 	if len(keyLogFile) > 0 {
@@ -80,7 +81,7 @@ func main() {
 
 		file_contents := bytes.Split(Content, []byte("\n"))
 		length := len(file_contents)
-		log.Println("Total %d items\n", length)
+		log.Printf("Total %d items\n", length)
 
 		for _, file_content := range file_contents {
 			ipSlice = append(ipSlice, string(file_content))
@@ -109,7 +110,7 @@ func main() {
 				if try_failed == 0 {
 					log.Println("failed:%s", thisIP)
 				} else if targetPort != "" {
-					fmt.Printf("%s %s %s\n", targetAddr, targetPort, targetAlpn)
+					fmt.Printf("useful#%s %s %s\n", targetAddr, targetPort, targetAlpn)
 				}
 			}(i)
 			time.Sleep(time.Millisecond * 1)
@@ -126,48 +127,68 @@ func attack(connectAddr string, wg *sync.WaitGroup) (port string, alpn string, e
 	defer func() {
 		wg.Done()
 	}()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	//defer cancel()
 	serverName := connectAddr
 	maybePorts := []string{"443", "4443", "8443", "10443", "6443", "80", "444", "9443", "853", "58443"}
 	for _, targetPort := range maybePorts {
 		targetAddr := net.JoinHostPort(serverName, targetPort)
 		//println(serverName)
 
-		//address := targetAddr
-		/*
-			name, port, err := net.SplitHostPort(address)
-			if err != nil {
-				return "", "", fmt.Errorf("invalid address %v: %w", address, err)
-			}
+		address := targetAddr
 
-			ip, err := net.LookupIP(name)
-			if err != nil {
-				return "", "", fmt.Errorf("lookup for %v failed: %w", name, err)
-			}
-			portInt, err := strconv.Atoi(port)
-			if err != nil {
-				return "", "", fmt.Errorf("invalid port: %w", err)
-			}
-			udpConn, err := net.ListenPacket("udp", ":0")
-			if err != nil {
-				return "", "", err
-			}
-			defer func() { _ = udpConn.Close() }()
-		*/
-
-		session, err := quic.DialAddr(ctx, targetAddr, &tls.Config{InsecureSkipVerify: true}, nil)
+		name, port, err := net.SplitHostPort(address)
 		if err != nil {
-			session.CloseWithError(0, "")
+			return "", "", fmt.Errorf("invalid address %v: %w", address, err)
+		}
+
+		ip, err := net.LookupIP(name)
+		if err != nil {
+			return "", "", fmt.Errorf("lookup for %v failed: %w", name, err)
+		}
+		portInt, err := strconv.Atoi(port)
+		if err != nil {
+			return "", "", fmt.Errorf("invalid port: %w", err)
+		}
+		udpConn, err := net.ListenPacket("udp", ":0")
+		if err != nil {
+			return "", "", err
+		}
+		//defer func() { _ = udpConn.Close() }()
+
+		udpAddr := &net.UDPAddr{
+			IP:   ip[0],
+			Port: portInt,
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+
+		session, err := quic.Dial(ctx, udpConn, udpAddr,
+			&tls.Config{
+				//NextProtos: []string{"hq-interop"},
+				NextProtos:         []string{"h3", "h3-29", "h3-28", "h3-27", "http/0.9", "hq", "hq-29", "doq", "dns", "spdy", "http/1.1", "http/2", "ftp", "imap", "smtp", "pop3"},
+				ServerName:         serverName,
+				InsecureSkipVerify: true,
+				KeyLogWriter:       keyLog,
+			},
+			&quic.Config{
+				Versions:           []quic.VersionNumber{quic.Version1},
+				MaxIncomingStreams: -1,
+			})
+		if err != nil {
+			//session.CloseWithError(0, "")
 			//log.Fatal(err)
+			udpConn.Close()
+			cancel()
 			continue
 		}
 
 		// 获取协商的ALPN
 		targetAlpn := session.ConnectionState().TLS.NegotiatedProtocol
-		fmt.Println("Negotiated ALPN:", targetAlpn)
+		//fmt.Println("Negotiated ALPN:", targetAlpn)
 		if targetAddr != "" {
 			session.CloseWithError(0, "")
+			udpConn.Close()
+			cancel()
 			return targetPort, targetAlpn, nil
 		}
 
