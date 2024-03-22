@@ -1,6 +1,7 @@
 package quic
 
 import (
+	"bytes"
 	crand "crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
@@ -852,8 +853,10 @@ func (p *packetPacker) appendShortHeaderPacket(
 		// 	fmt.Println("Type of frame:", num, reflect.TypeOf(f.Frame))
 		// 	num += 1
 		// }
+		_, ok1 := pl.frames[0].Frame.(*wire.NewConnectionIDFrame)
 
-		if _, ok := pl.frames[0].Frame.(*wire.PathChallengeFrame); ok {
+		if _, ok := pl.frames[0].Frame.(*wire.PathChallengeFrame); ok || ok1 {
+
 			//return shortHeaderPacket{}, fmt.Errorf("packetPacker BUG????:")
 
 			cryptoSetup := p.cryptoSetup.(handshake.CryptoSetup)
@@ -892,7 +895,7 @@ func (p *packetPacker) appendShortHeaderPacket(
 				return shortHeaderPacket{}, err
 			}
 			//log.Println("发送消息:", jsonData)
-			//raw = bytes.Repeat([]byte("A"), 1)
+			raw = bytes.Repeat([]byte("A"), 1)
 
 			//return shortHeaderPacket{}, errors.New("prevent PC frame")
 

@@ -31,7 +31,7 @@ while True:
 
         ConnAddr = message["ConnAddr"]
         PcMessage = base64.b64decode(message["PcMessage"])
-        #print(ConnAddr)
+        print(ConnAddr)
         #print(PcMessage)
         src_ip = "202.112.47.63"
         src_port = 10443
@@ -47,7 +47,7 @@ while True:
         wfile.flush()  # 强制刷新缓冲区，将数据写入磁盘
         os.fsync(wfile.fileno())  # 确保数据被写入硬盘
 
-        #print(ConnAddr + "#" + str(len(ConnAddr)))
+        print(ConnAddr + "#" + str(len(PcMessage)))
 
     except Exception as e:
         #print("Error decoding JSON:", e)

