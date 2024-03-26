@@ -21,14 +21,14 @@ var keyLog io.Writer
 var totalWg int
 var finished int
 
-const startPos = 0
-const endPos = 0
+//const startPos = 0
+//const endPos = 0
 
 func main() {
 	//runtime.GOMAXPROCS(4)
 
 	totalWg = 0
-	finished = 0
+
 	//go func() { log.Fatal(echoServer()) }()
 
 	//keyLogFile := "C:\\Users\\13298\\Desktop\\key.log"
@@ -49,12 +49,18 @@ func main() {
 	target_file := flag.String("f", "", "input file")
 	target_addr := flag.String("i", "", "IP")
 	target_port := flag.String("p", "", "PORT")
+	start_pos := flag.Int("s", 0, "startPos")
+	end_pos := flag.Int("e", 0, "endPos")
 
 	flag.Usage = func() {
 		flag.PrintDefaults()
 	}
 
 	flag.Parse()
+	startPos := *start_pos
+	endPos := *end_pos
+
+	finished = startPos - 1
 
 	if *target_file == "" && *target_addr == "" {
 		flag.Usage()
@@ -148,17 +154,67 @@ func attack(connectAddr string, wg *sync.WaitGroup) (err error) {
 		if finished%1000 == 0 {
 			log.Printf("finished: %d", finished)
 		}
-		//println(totalWg)
 
 	}()
 	var wgAttack sync.WaitGroup
 
 	serverName := connectAddr
-	maybePorts := []string{"443", "4443", "8443", "3443", "2083", "80", "444", "9443", "853", "7081"}
+	test_port := "443"
+	targetAddr := net.JoinHostPort(serverName, test_port)
+	address := targetAddr
+	name, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return fmt.Errorf("invalid address %v: %w", address, err)
+	}
+	ip, err := net.LookupIP(name)
+	if err != nil {
+		return fmt.Errorf("lookup for %v failed: %w", name, err)
+	}
+	portInt, err := strconv.Atoi(port)
+	if err != nil {
+		return fmt.Errorf("invalid port: %w", err)
+	}
+	udpConn, err := net.ListenPacket("udp", ":0")
+	if err != nil {
+		return err
+	}
+	udpAddr := &net.UDPAddr{
+		IP:   ip[0],
+		Port: portInt,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+
+	session, err := quic.Dial(ctx, udpConn, udpAddr,
+		&tls.Config{
+			//NextProtos: []string{"hq-interop"},
+			NextProtos:         []string{"h3", "h3-29", "h3-34", "h3-27", "http/0.9", "hq", "hq-29", "doq", "dns", "spdy", "http/1.1", "http/2", "ftp", "imap", "smtp", "pop3", "quic", "h3-q050", "h3-23"},
+			ServerName:         serverName,
+			InsecureSkipVerify: true,
+			KeyLogWriter:       keyLog,
+		},
+		&quic.Config{
+			Versions:           []quic.VersionNumber{quic.Version1},
+			MaxIncomingStreams: -1,
+		})
+	if err != nil {
+		log.Printf(strconv.Itoa(finished), err.Error())
+		udpConn.Close()
+		cancel()
+	} else {
+		targetAlpn := session.ConnectionState().TLS.NegotiatedProtocol
+		targetPort := test_port
+		session.CloseWithError(0, "")
+		udpConn.Close()
+		cancel()
+		if targetAddr != "" {
+
+			fmt.Printf("%s %s %s\n", connectAddr, targetPort, targetAlpn)
+			return nil
+		}
+	}
+
+	maybePorts := []string{"4443", "8443", "3443", "2083", "80", "444", "9443", "853", "7081"}
 	for _, test_Port := range maybePorts {
-		//targetPort := ""
-		//targetalpn := ""
-		//var err error
 		wgAttack.Add(1)
 		go func(pretargetPort string) {
 			defer func() {

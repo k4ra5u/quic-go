@@ -28,6 +28,7 @@ const (
 	Version1 = protocol.Version1
 	// Version2 is RFC 9369
 	Version2       = protocol.Version2
+	VersionDraft29 = protocol.VersionDraft29
 	VersionUnknown = protocol.VersionUnknown
 )
 

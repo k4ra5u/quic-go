@@ -22,14 +22,14 @@ const (
 // The version numbers, making grepping easier
 const (
 	VersionUnknown Version = math.MaxUint32
-	versionDraft29 Version = 0xff00001d // draft-29 used to be a widely deployed version
+	VersionDraft29 Version = 0xff00001d // draft-29 used to be a widely deployed version
 	Version1       Version = 0x1
 	Version2       Version = 0x6b3343cf
 )
 
 // SupportedVersions lists the versions that the server supports
 // must be in sorted descending order
-var SupportedVersions = []Version{Version1, Version2}
+var SupportedVersions = []Version{Version1, Version2, VersionDraft29}
 
 // IsValidVersion says if the version is known to quic-go
 func IsValidVersion(v Version) bool {
@@ -41,7 +41,7 @@ func (vn Version) String() string {
 	switch vn {
 	case VersionUnknown:
 		return "unknown"
-	case versionDraft29:
+	case VersionDraft29:
 		return "draft-29"
 	case Version1:
 		return "v1"

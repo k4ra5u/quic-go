@@ -853,7 +853,8 @@ func (p *packetPacker) appendShortHeaderPacket(
 		// 	fmt.Println("Type of frame:", num, reflect.TypeOf(f.Frame))
 		// 	num += 1
 		// }
-		_, ok1 := pl.frames[0].Frame.(*wire.NewConnectionIDFrame)
+		//_, ok1 := pl.frames[0].Frame.(*wire.NewConnectionIDFrame)
+		ok1 := false
 
 		if _, ok := pl.frames[0].Frame.(*wire.PathChallengeFrame); ok || ok1 {
 
