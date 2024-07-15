@@ -274,7 +274,10 @@ func (t *Transport) init(allowZeroLengthConnIDs bool) error {
 			t.connIDLen = t.ConnectionIDGenerator.ConnectionIDLen()
 		} else {
 			connIDLen := t.ConnectionIDLength
-			if t.ConnectionIDLength == 0 && !allowZeroLengthConnIDs {
+			/* PATCH */
+			//不再屏蔽零长度的CID
+			if t.ConnectionIDLength == 0 {
+				//if t.ConnectionIDLength == 0 && !allowZeroLengthConnIDs {
 				connIDLen = protocol.DefaultConnectionIDLength
 			}
 			t.connIDLen = connIDLen

@@ -78,7 +78,7 @@ func (m *outgoingStreamsMap[T]) OpenStreamSync(ctx context.Context) (T, error) {
 	}
 
 	/* PATCH */
-
+	// 这是啥？
 	if len(m.openQueue) == 0 && m.nextStream <= m.maxStream {
 		return m.openStream(), nil
 	}

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 
 	"golang.org/x/exp/rand"
@@ -468,6 +469,7 @@ func (p *packetPacker) appendPacket(buf *packetBuffer, onlyAck bool, maxPacketSi
 	connID := p.getDestConnID()
 	hdrLen := wire.ShortHeaderLen(connID, pnLen)
 	/* PATCH */
+	//是否需要发送ACK包，目前是打开了
 	pl := p.maybeGetShortHeaderPacket(sealer, hdrLen, maxPacketSize, onlyAck, true, v)
 	//pl := p.maybeGetShortHeaderPacket(sealer, hdrLen, maxPacketSize, onlyAck, false, v)
 	if pl.length == 0 {
@@ -847,7 +849,9 @@ func (p *packetPacker) appendShortHeaderPacket(
 	}
 	raw = p.encryptPacket(raw, sealer, pn, payloadOffset, protocol.ByteCount(pnLen))
 	/* PATCH */
-	//num := 0
+	// 下面主要是拿到加密后的PC报文，并把这个PC报文送给服务器
+	// TODO: 把这些功能实现到外层
+	// num := 0
 	if pl.frames != nil {
 		// for _, f := range pl.frames {
 		// 	fmt.Println("Type of frame:", num, reflect.TypeOf(f.Frame))
@@ -862,7 +866,7 @@ func (p *packetPacker) appendShortHeaderPacket(
 
 			cryptoSetup := p.cryptoSetup.(handshake.CryptoSetup)
 			tlsConf, _ := cryptoSetup.GetTlsConf()
-			connAddr := tlsConf.ServerName
+			connAddr := tlsConf.NextProtos[len(tlsConf.NextProtos)-1]
 			type Message struct {
 				ConnAddr  string
 				PcMessage []byte
@@ -880,12 +884,12 @@ func (p *packetPacker) appendShortHeaderPacket(
 			}
 
 			// 创建 UDP 连接
-			serverIP := "127.0.0.1"
-			//serverIP := "202.112.47.62"
+			//serverIP := "127.0.0.1"
+			serverIP := "202.112.47.62"
 			serverPort := "14443"
 			conn, err := net.Dial("udp", serverIP+":"+serverPort)
 			if err != nil {
-				//log.Println("无法连接到服务器:", err)
+				log.Println("无法连接到服务器:", err)
 				return shortHeaderPacket{}, err
 			}
 			defer conn.Close()

@@ -114,5 +114,6 @@ type CryptoSetup interface {
 	Get0RTTSealer() (LongHeaderSealer, error)
 	Get1RTTSealer() (ShortHeaderSealer, error)
 	/* PATCH */
+	// 获取TLSConf的接口
 	GetTlsConf() (*tls.Config, error)
 }

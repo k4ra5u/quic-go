@@ -167,7 +167,7 @@ func newClient(sendConn sendConn, connIDGenerator ConnectionIDGenerator, config 
 	if err != nil {
 		return nil, err
 	}
-	destConnID, err := generateConnectionIDForInitial()
+	destConnID, err := generateConnectionIDForInitial(0)
 	if err != nil {
 		return nil, err
 	}

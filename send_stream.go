@@ -494,7 +494,7 @@ func (s *sendStreamAckHandler) OnLost(f wire.Frame) {
 }
 
 /* PATCH */
-
+// 通过stream直接发送各种报文
 func (s *sendStream) SendFramesDirect(frames []wire.Frame) {
 	s.signalWrite()
 	for i := len(frames) - 1; i >= 0; i-- {

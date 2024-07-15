@@ -1,5 +1,5 @@
-# VA QUIC implementation in pure Go
-
+# A tesing implementation for QUIC 
+~~A QUIC implementation in pure Go~~
 <img src="docs/quic.png" width=303 height=124>
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/k4ra5u/quic-go)](https://pkg.go.dev/github.com/k4ra5u/quic-go)

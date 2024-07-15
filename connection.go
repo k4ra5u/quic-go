@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -518,6 +519,37 @@ func (s *connection) run() error {
 
 	var sendQueueAvailable <-chan struct{}
 
+	/* PATCH */
+	// handleFrame用来处理各种已经解析完成的frame
+	// 但是connection.go的run方法中是先处理接收，再处理发送
+	// 如果我想延时接收，正常发送，那么对发送队列的处理会在前面卡死
+	// 目前的解决方法一是能够把run方法中的顺序收发改为并行（存在BUG，等其他功能完善再收拾这个）
+	// 另一种解决方法是只修改处理各种frame的handler，把这些handler改为并行（也还在论证）
+	// go func() {
+	// sendLoop:
+	// 	for {
+	// 		select {
+	// 		case closeErr = <-s.closeChan:
+	// 			break sendLoop
+	// 		default:
+	// 		}
+	// 		now := time.Now()
+	// 		if s.sendQueue.WouldBlock() {
+	// 			// The send queue is still busy sending out packets.
+	// 			// Wait until there's space to enqueue new packets.
+	// 			sendQueueAvailable = s.sendQueue.Available()
+	// 			continue
+	// 		}
+	// 		if err := s.triggerSending(now); err != nil {
+	// 			s.closeLocal(err)
+	// 		}
+	// 		if s.sendQueue.WouldBlock() {
+	// 			sendQueueAvailable = s.sendQueue.Available()
+	// 		} else {
+	// 			sendQueueAvailable = nil
+	// 		}
+	// 	}
+	// }()
 runLoop:
 	for {
 		// Close immediately if requested
@@ -1005,7 +1037,9 @@ func (s *connection) handleUnpackError(err error, p receivedPacket, pt logging.P
 		if s.tracer != nil && s.tracer.DroppedPacket != nil {
 			s.tracer.DroppedPacket(pt, protocol.InvalidPacketNumber, p.Size(), logging.PacketDropPayloadDecryptError)
 		}
-		s.logger.Debugf("Dropping %s packet (%d bytes) that could not be unpacked. Error: %s", pt, p.Size(), err)
+		/* PATCH */
+		// 输出无法被解析的数据包
+		log.Printf("Dropping %s packet (%d bytes) that could not be unpacked.data:%s Error: %s", pt, p.Size(), p.data, err)
 	default:
 		var headerErr *headerParseError
 		if errors.As(err, &headerErr) {
@@ -1249,6 +1283,7 @@ func (s *connection) handleFrames(
 		l, frame, err := s.frameParser.ParseNext(data, encLevel, s.version)
 		if err != nil {
 			/* PATCH */
+			// 设置一个虚假的错误码，用来标识PADDING frame
 			if err.ErrorCode == 0xdeadbeef {
 				fmt.Printf("%s:Received PADDING frame:%s\n", s.conn.RemoteAddr(), err.ErrorMessage)
 			} else {
@@ -1270,6 +1305,13 @@ func (s *connection) handleFrames(
 		if handleErr != nil {
 			continue
 		}
+		/* PATCH */
+		// handleFrame用来处理各种已经解析完成的frame
+		// 但是connection.go的run方法中是先处理接收，再处理发送
+		// 如果我想延时接收，正常发送，那么对发送队列的处理会在前面卡死
+		// 目前的解决方法一是能够把run方法中的顺序收发改为并行（还在论证）
+		// 另一种解决方法是只修改处理各种frame的handler，把这些handler改为并行
+		// 目前并没有做修改
 		if err := s.handleFrame(frame, encLevel, destConnID); err != nil {
 			if logs == nil {
 				return false, err
@@ -1325,10 +1367,12 @@ func (s *connection) handleFrame(f wire.Frame, encLevel protocol.EncryptionLevel
 	case *wire.StopSendingFrame:
 		err = s.handleStopSendingFrame(frame)
 	/* PATCH */
-	//case *wire.PingFrame:
+	// 不处理PingFrame
+	// case *wire.PingFrame:
 	case *wire.PathChallengeFrame:
 		s.handlePathChallengeFrame(frame)
 	/* PATCH */
+	// 添加PathResponseFrame处理逻辑
 	case *wire.PathResponseFrame:
 		s.handlePathResponseFrame(frame)
 	// since we don't send PATH_CHALLENGEs, we don't expect PATH_RESPONSEs
@@ -1344,7 +1388,8 @@ func (s *connection) handleFrame(f wire.Frame, encLevel protocol.EncryptionLevel
 	case *wire.DatagramFrame:
 		err = s.handleDatagramFrame(frame)
 	default:
-		/* PATCH */
+
+		// 对于未知的frame类型，不返回错误
 		//err = fmt.Errorf("unexpected frame type: %s", reflect.ValueOf(&frame).Elem().Type().Name())
 		err = nil
 	}
@@ -1365,6 +1410,9 @@ func (s *connection) handlePacket(p receivedPacket) {
 }
 
 func (s *connection) handleConnectionCloseFrame(frame *wire.ConnectionCloseFrame) {
+	/* PATCH */
+	// 如果收到了ConnectionCloseFrame，输出ConnectionCloseFrame的内容
+	log.Printf("CONNECTION_CLOSE#%s", frame.ReasonPhrase)
 	if frame.IsApplicationError {
 		s.closeRemote(&qerr.ApplicationError{
 			Remote:       true,
@@ -1485,6 +1533,7 @@ func (s *connection) handlePathChallengeFrame(frame *wire.PathChallengeFrame) {
 }
 
 /* PATCH */
+// 添加handlePathResponseFrame处理逻辑，输出PathResponseFrame的内容
 func (s *connection) handlePathResponseFrame(frame *wire.PathResponseFrame) {
 	fmt.Printf("%s:received path_response: %02x%02x%02x%02x%02x%02x%02x%02x\n", s.conn.RemoteAddr(), frame.Data[0], frame.Data[1], frame.Data[2], frame.Data[3], frame.Data[4], frame.Data[5], frame.Data[6], frame.Data[7])
 	//s.queueControlFrame(&wire.PathResponseFrame{Data: frame.Data})
@@ -2410,4 +2459,15 @@ func (s *connection) NextConnection() Connection {
 	<-s.HandshakeComplete()
 	s.streamsMap.UseResetMaps()
 	return s
+}
+
+/* PATCH */
+/* 对于 GetConnIDGenerator 的实现 */
+func (s *connection) GetConnIDGenerator() *connIDGenerator {
+	return s.connIDGenerator
+}
+
+/* 对于GetConn 的实现 */
+func (s *connection) GetConn() sendConn {
+	return s.conn
 }

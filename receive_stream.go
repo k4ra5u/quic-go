@@ -73,6 +73,13 @@ func newReceiveStream(
 func (s *receiveStream) StreamID() protocol.StreamID {
 	return s.streamID
 }
+func (s *receiveStream) GetStreamLimit() uint64 {
+	//s.flowController.GetWindowUpdate()
+	//s.flowController.UpdateSendWindow(protocol.ByteCount(0x1337))
+	return uint64(s.flowController.SendWindowSize())
+	//return uint64(s.finalOffset)
+
+}
 
 // Read implements io.Reader. It is not thread safe!
 func (s *receiveStream) Read(p []byte) (int, error) {

@@ -12,6 +12,7 @@ def udp_server(host, port):
             wfile.write(output)
             wfile.flush()  # 强制刷新缓冲区，将数据写入磁盘
             os.fsync(wfile.fileno())  # 确保数据被写入硬盘
+            print(output)
         
 
 if __name__ == "__main__":

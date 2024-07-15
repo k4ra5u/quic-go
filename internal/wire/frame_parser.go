@@ -71,6 +71,7 @@ func (p *FrameParser) ParseNext(data []byte, encLevel protocol.EncryptionLevel, 
 
 func (p *FrameParser) parseNext(r *bytes.Reader, encLevel protocol.EncryptionLevel, v protocol.Version) (Frame, *qerr.TransportError) {
 	/* PATCH */
+	// 这是啥？
 	padding_Read_flag := 0
 	errorMessage := ""
 	for r.Len() != 0 {
@@ -85,7 +86,6 @@ func (p *FrameParser) parseNext(r *bytes.Reader, encLevel protocol.EncryptionLev
 			if padding_Read_flag == 0 {
 				padding_Read_flag = 1
 				errorMessage = strconv.Itoa(p.r.Len() + 1)
-				//log.Printf("Received PADDING frame:%d", p.r.Len()+1)
 			}
 			continue
 		}

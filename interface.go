@@ -101,6 +101,9 @@ type ReceiveStream interface {
 	// A zero value for t means Read will not time out.
 
 	SetReadDeadline(t time.Time) error
+	/* PATCH */
+	// 获取Stream最大流数
+	GetStreamLimit() uint64
 }
 
 // A SendStream is a unidirectional Send Stream.
@@ -201,6 +204,12 @@ type Connection interface {
 	SendDatagram(payload []byte) error
 	// ReceiveDatagram gets a message received in a datagram, as specified in RFC 9221.
 	ReceiveDatagram(context.Context) ([]byte, error)
+
+	/* PATCH */
+	/* 通过 GetConnIDGenerator 获取其 connIDGenrator 的私有结构 */
+	GetConnIDGenerator() *connIDGenerator
+	/* 通过 GetConn 获取其 sendConn 的私有结构 */
+	GetConn() sendConn
 }
 
 // An EarlyConnection is a connection that is handshaking.

@@ -59,12 +59,17 @@ func ParseConnectionID(b []byte) ConnectionID {
 
 // GenerateConnectionIDForInitial generates a connection ID for the Initial packet.
 // It uses a length randomly chosen between 8 and 20 bytes.
-func GenerateConnectionIDForInitial() (ConnectionID, error) {
+/* PATCH */
+// 添加一个参数，当l是0时，随机分配CID长度，否则根据输入分配长度
+// 应该时已经弃用了
+func GenerateConnectionIDForInitial(l int) (ConnectionID, error) {
 	r := make([]byte, 1)
 	if _, err := rand.Read(r); err != nil {
 		return ConnectionID{}, err
 	}
-	l := MinConnectionIDLenInitial + int(r[0])%(maxConnectionIDLen-MinConnectionIDLenInitial+1)
+	if l == 0 {
+		l = MinConnectionIDLenInitial + int(r[0])%(maxConnectionIDLen-MinConnectionIDLenInitial+1)
+	}
 	return GenerateConnectionID(l)
 }
 

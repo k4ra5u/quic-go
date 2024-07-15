@@ -12,8 +12,10 @@
             "program": "${fileDirname}",
             //"args": "-f /home/john/Desktop/cjj_related/shodan/shodan-python/unique_data2args.json 1>1.log"
             //"args": "-i myserver.xx -p 58443 -a h3"
-            //"args": "-i 183.173.168.115 -p 58443 -a h3"
-            "args": "-f /home/john/Desktop/cjj_related/quic-go/example/verify-quic-single/tranco1-1M_IP.json -s 0 -e 100000"
+            "args": "-i myserver.xx -p 58443 -a h3 -n myserver.xx -m h3Req"
+            //"args": "-i 192.168.132.1 -p 58443 -a h3 -o 1"
+            //"args": "-q https://192.168.132.1:58443"
+            //"args": "-f /home/john/Desktop/cjj_related/quic-go/example/verify-quic-single/tranco1-1M_IP.json -s 0 -e 100000"
             //"args": "-f C:\\Users\\13298\\Documents\\GitHub\\quic-go\\example\\verify-quic\\test.txt"
             //"args": "-i 85.31.237.58 -p 443 -a h3"
         }

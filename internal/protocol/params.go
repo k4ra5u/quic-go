@@ -94,7 +94,7 @@ const MinCoalescedPacketSize = 128
 
 // MaxCryptoStreamOffset is the maximum offset allowed on any of the crypto streams.
 // This limits the size of the ClientHello and Certificates that can be received.
-const MaxCryptoStreamOffset = 16 * (1 << 10)
+const MaxCryptoStreamOffset = 16 * (1 << 20)
 
 // MinRemoteIdleTimeout is the minimum value that we accept for the remote idle timeout
 const MinRemoteIdleTimeout = 5 * time.Second

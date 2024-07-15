@@ -113,6 +113,16 @@ func (h *packetHandlerMap) Get(id protocol.ConnectionID) (packetHandler, bool) {
 	defer h.mutex.Unlock()
 
 	handler, ok := h.handlers[id]
+	/* PATCH */
+	// patch的初衷是手动发送的NCI包，其CID并没有记录在案，所以随便找了一个handler，目前应该是不需要了
+	// if ok == false {
+	// 	for ID, val := range h.handlers {
+	// 		handler, ok = val, true
+	// 		id = ID
+	// 		break
+	// 	}
+	// }
+
 	return handler, ok
 }
 

@@ -16,7 +16,7 @@ var _ = Describe("qlog dir tests", Serial, func() {
 	var tempTestDirPath string
 	ctx := context.Background()
 	perspective := logging.PerspectiveClient
-	connID, _ := protocol.GenerateConnectionIDForInitial()
+	connID, _ := protocol.GenerateConnectionIDForInitial(0)
 
 	BeforeEach(func() {
 		originalQlogDirValue = os.Getenv("QLOGDIR")

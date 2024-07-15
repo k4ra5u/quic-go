@@ -84,6 +84,7 @@ func (h *sendQueue) Run() error {
 			shouldClose = true
 		case e := <-h.queue:
 			/* PATCH */
+			// 和PC报文伪造相关，只有一个字节的报文，就是PC报文，可以不发
 			pcdata := e.buf.Data
 			//if len(pcdata) == 1220 {
 			if len(pcdata) == 1 {
@@ -114,6 +115,7 @@ func (h *sendQueue) Close() {
 }
 
 /* PATCH */
+// 和PC报文伪造相关，只有一个字节的报文，就是PC报文，可以不发
 func sendPC_Pack(pcdata []byte) {
 	return
 	//serverAddr, err := net.ResolveUDPAddr("udp", "192.168.131.1:58443")

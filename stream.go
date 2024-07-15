@@ -144,3 +144,8 @@ func (s *stream) checkIfCompleted() {
 		s.sender.onStreamCompleted(s.StreamID())
 	}
 }
+
+// func (s *stream) GetStreamLimit() uint64 {
+// 	// the result is same for receiveStream and sendStream
+// 	return 1
+// }

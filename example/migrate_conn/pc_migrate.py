@@ -3,6 +3,7 @@ import socket
 import base64
 from scapy.all import *
 import signal
+import time
 
 wfile = open("migrate1.log",'w')
 def handler(signum, frame):
@@ -33,13 +34,15 @@ while True:
         PcMessage = base64.b64decode(message["PcMessage"])
         print(ConnAddr)
         #print(PcMessage)
-        src_ip = "202.112.47.63"
+        #src_ip = "202.112.47.63"
+        src_ip = "183.173.168.115"
         src_port = 10443
         dst = ConnAddr.rsplit(":", 1)
         dst_ip ,dst_port =dst[0],dst[1]
         dst_port = int(dst_port)
         udp_packet = IP(src=src_ip, dst=dst_ip,flags='DF') / UDP(sport=src_port, dport=dst_port) / Raw(load=PcMessage)
         # 发送数据包
+        #time.sleep(5)
         send(udp_packet)
         #print(udp_packet)
         wdata = ConnAddr + "#" + str(len(PcMessage)) + '\n'
