@@ -139,7 +139,7 @@ func (b *BaseArgs) Make_one_session() (session quic.Connection, cancel context.C
 		&quic.Config{
 			Versions:             []quic.VersionNumber{quic.Version1},
 			MaxIncomingStreams:   -1,
-			HandshakeIdleTimeout: 1337 * time.Minute,
+			HandshakeIdleTimeout: 1337 * time.Millisecond,
 			MaxIdleTimeout:       42 * time.Hour,
 		})
 

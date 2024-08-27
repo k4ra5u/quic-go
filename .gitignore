@@ -17,6 +17,9 @@ fuzzing/*/corpus/
 example/*/*.log
 example/*/*.txt
 example/*/*.diff
+example/key.log
+example/gen_test/gen_test
 *.exe
 gomock_reflect_*/
 *.exe
+example/gen_test/gen_test
